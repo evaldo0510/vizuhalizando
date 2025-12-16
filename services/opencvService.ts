@@ -50,7 +50,14 @@ const loadImage = (base64: string): Promise<HTMLImageElement> => {
  * 2. Gaussian Blur - Reduces high-frequency noise
  * 3. Unsharp Mask - Sharpens features (eyes, edges)
  */
-export const preprocessImage = async (base64Image: string): Promise<string> => {
+// services/opencvService.ts
+
+export async function preprocessImage(base64: string): Promise<string> {
+  // Por enquanto, não faz pré-processamento pesado com OpenCV.
+  // Só retorna a própria imagem para evitar erro de memória.
+  return base64;
+}
+
   const isReady = await ensureOpenCVReady();
   if (!isReady) {
     console.warn("Skipping OpenCV processing (library not ready).");
