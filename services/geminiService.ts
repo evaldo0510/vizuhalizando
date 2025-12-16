@@ -7,9 +7,9 @@ let ai: GoogleGenAI | null = null;
 
 const getAi = () => {
   if (!ai) {
-    const apiKey = process.env.API_KEY;
+    const apiKey = import.meta.env.VITE_API_KEY;
     if (!apiKey) {
-        throw new Error("API Key not found. Please check process.env.API_KEY");
+              throw new Error("API Key not found. Please check import.meta.env.VITE_API_KEY");
     }
     try {
         ai = new GoogleGenAI({ apiKey });
