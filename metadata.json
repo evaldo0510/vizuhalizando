@@ -1,0 +1,7 @@
+{
+  "name": "VizuHalizando",
+  "description": "AI-powered personal stylist and visagism consultant using Gemini to analyze features and generate virtual try-ons.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
