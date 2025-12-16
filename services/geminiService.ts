@@ -7,9 +7,9 @@ let ai: GoogleGenAI | null = null;
 
 const getAi = () => {
   if (!ai) {
-    const apiKey = import.meta.env.VITE_API_KEY;
+    const apiKey = process.env.API_KEY;
     if (!apiKey) {
-              throw new Error("API Key not found. Please check import.meta.env.VITE_API_KEY");
+        throw new Error("API Key not found. Please check process.env.API_KEY");
     }
     try {
         ai = new GoogleGenAI({ apiKey });
@@ -74,15 +74,17 @@ export const resizeBase64Image = (base64Str: string, maxWidth: number = 512, qua
 };
 
 export const analyzeImageWithGemini = async (
-  base64Image: string, 
+  base64Images: string[], // Changed to accept array
   metrics: UserMetrics,
   context?: string,
   preferences?: UserPreferences
 ): Promise<AnalysisResult> => {
   const client = getAi();
   
-  // Use default optimized size (512px) for faster analysis
-  const optimizedImage = await resizeBase64Image(base64Image);
+  // Resize all images in parallel
+  const optimizedImages = await Promise.all(
+      base64Images.map(img => resizeBase64Image(img))
+  );
 
   // Construct preferences string
   let prefString = "";
@@ -92,8 +94,16 @@ export const analyzeImageWithGemini = async (
       if (preferences.avoidItems) prefString += `ITEMS TO AVOID: ${preferences.avoidItems}. `;
   }
 
+  // Construct image parts
+  const imageParts = optimizedImages.map(data => ({
+      inlineData: { mimeType: "image/jpeg", data: data }
+  }));
+
   const prompt = `
-    Analyze this person's image for a high-end visagism and personal styling consultation (VizuHalizando AI), tailored for the Brazilian context.
+    Analyze the provided image(s) for a high-end visagism and personal styling consultation (VizuHalizando AI), tailored for the Brazilian context.
+    
+    You have received ${imageParts.length} photo(s). 
+    CRITICAL: Synthesize information from ALL photos provided (Front, Profile, Body, etc.) to create the most accurate assessment of head shape, body type, and hair texture.
     
     User Metrics: Height: ${metrics.height}m, Weight: ${metrics.weight}kg.
     Requested Environment/Occasion: ${context ? context.toUpperCase() : 'GENERAL STYLE ASSESSMENT'}.
@@ -110,6 +120,7 @@ export const analyzeImageWithGemini = async (
     - Oliva (Olive): Greenish/grayish cast, common in Brazil (mix of warm and cool).
     
     CRITICAL INSTRUCTION 3: HAIR & VISAGISM.
+    Based on the multi-angle view (if available), provide highly precise haircut recommendations. Consider cranial structure, hair density, and growth direction visible in the photos.
     Provide actionable advice including specific products (e.g., "Pomada Matte", "Leave-in Defrizante") and techniques (e.g., "Secagem com difusor").
 
     Output Structure (JSON):
@@ -142,6 +153,7 @@ export const analyzeImageWithGemini = async (
           "ocasiao": "string",
           "motivo": "string",
           "visagismo_sugerido": "string",
+          "estacao": "Primavera" | "Verão" | "Outono" | "Inverno" | "Atemporal",
           "termos_busca": "string",
           "ambientes": ["string"], 
           "components": [
@@ -165,7 +177,7 @@ export const analyzeImageWithGemini = async (
       model: "gemini-2.5-flash",
       contents: {
         parts: [
-          { inlineData: { mimeType: "image/jpeg", data: optimizedImage } },
+          ...imageParts,
           { text: prompt }
         ]
       },

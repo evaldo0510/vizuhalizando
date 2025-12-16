@@ -45,6 +45,7 @@ export interface OutfitSuggestion {
   ocasiao: string;
   motivo: string;
   visagismo_sugerido: string;
+  estacao?: string; // New: Season classification
   termos_busca: string; 
   partner_suggestion?: PartnerItem; 
   components?: OutfitComponent[];   
