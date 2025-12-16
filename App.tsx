@@ -1417,4 +1417,529 @@ export default function App() {
                                                        className={`flex-1 py-2.5 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${
                                                            selectedOutfits.some(o => o.titulo === outfit.titulo)
                                                            ? 'bg-vizu-gold text-white border-vizu-gold'
-                                                           : 'border-slate-
+                                                           : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                       }`}
+                                                   >
+                                                       {selectedOutfits.some(o => o.titulo === outfit.titulo) ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                                       Comparar
+                                                   </button>
+                                                   <button 
+                                                       onClick={() => handleShareLook(outfit)}
+                                                       className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                                   >
+                                                       <Share2 className="w-4 h-4" />
+                                                   </button>
+                                               </div>
+                                           </div>
+
+                                           {/* Content Area */}
+                                           <div className="w-full md:w-7/12 flex flex-col">
+                                               <div className="flex items-start justify-between mb-2">
+                                                   <div>
+                                                       <span className="text-[10px] font-bold text-vizu-gold uppercase tracking-wider mb-1 block">
+                                                           {outfit.ocasiao}
+                                                       </span>
+                                                       <h3 className="text-xl font-serif font-bold text-slate-900 dark:text-white leading-tight">
+                                                           {outfit.titulo}
+                                                       </h3>
+                                                   </div>
+                                                   <button 
+                                                       onClick={() => handleStartEdit(originalIndex, outfit)}
+                                                       className="p-2 text-slate-400 hover:text-vizu-gold hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                                                   >
+                                                       <Pencil className="w-4 h-4" />
+                                                   </button>
+                                               </div>
+
+                                               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6 font-medium">
+                                                   {outfit.detalhes}
+                                               </p>
+
+                                               {/* Components List */}
+                                               <div className="space-y-3 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                   <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                       <ShoppingBag className="w-3 h-3" />
+                                                       Onde Encontrar
+                                                   </h5>
+                                                   <div className="space-y-2">
+                                                       {(outfit.components || []).map((comp, i) => (
+                                                           <div key={i} className="flex items-center justify-between text-sm group/item">
+                                                               <div className="flex items-center gap-2 overflow-hidden">
+                                                                   <div className="w-1.5 h-1.5 rounded-full bg-vizu-gold flex-shrink-0"></div>
+                                                                   <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{comp.peca}</span>
+                                                                   <span className="text-slate-400 text-xs">• {comp.loja}</span>
+                                                               </div>
+                                                               <a 
+                                                                   href={comp.link} 
+                                                                   target="_blank" 
+                                                                   rel="noopener noreferrer"
+                                                                   className="flex items-center gap-1 text-vizu-gold font-bold text-xs hover:underline opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                               >
+                                                                   Ver Loja <ExternalLink className="w-3 h-3" />
+                                                               </a>
+                                                           </div>
+                                                       ))}
+                                                   </div>
+                                               </div>
+
+                                               {/* Stylist Note & Feedback */}
+                                               <div className="mt-auto">
+                                                   <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-100 dark:border-amber-800/30">
+                                                       <Sparkles className="w-4 h-4 text-vizu-gold mt-0.5 flex-shrink-0" />
+                                                       <div>
+                                                           <h5 className="text-xs font-bold text-amber-900 dark:text-amber-300 mb-1">Stylist Note</h5>
+                                                           <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                                                               {outfit.motivo}
+                                                           </p>
+                                                       </div>
+                                                   </div>
+                                                   
+                                                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                                       <div className="relative flex-1 mr-4">
+                                                           <input 
+                                                               type="text" 
+                                                               placeholder="Adicione uma nota pessoal..." 
+                                                               className="w-full text-xs bg-transparent border-none focus:ring-0 text-slate-600 dark:text-slate-400 placeholder:text-slate-300 px-0"
+                                                               value={outfit.userNote || ''}
+                                                               onChange={(e) => updateOutfitNote(originalIndex, e.target.value)}
+                                                           />
+                                                           <Edit3 className="w-3 h-3 text-slate-300 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                       </div>
+                                                       
+                                                       {/* Feedback Actions */}
+                                                       <div className="flex items-center gap-2">
+                                                           <button 
+                                                               onClick={() => handleOutfitFeedback(originalIndex, 'like')}
+                                                               className={`p-2 rounded-full transition-colors ${outfit.feedback === 'like' ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                           >
+                                                               <ThumbsUp className="w-4 h-4" />
+                                                           </button>
+                                                           <button 
+                                                               onClick={() => handleOutfitFeedback(originalIndex, 'dislike')}
+                                                               className={`p-2 rounded-full transition-colors ${outfit.feedback === 'dislike' ? 'bg-red-100 text-red-600 dark:bg-red-900/30' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                           >
+                                                               <ThumbsDown className="w-4 h-4" />
+                                                           </button>
+                                                       </div>
+                                                   </div>
+                                               </div>
+                                           </div>
+                                       </div>
+                                   </div>
+                                   );
+                               })}
+                           </div>
+                       </div>
+                   </div>
+               </div>
+            )}
+        </div>
+      )}
+
+      {/* Upload/Camera Selection Modal (triggered by "Gerar novo look") */}
+      {showUploadOption && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setShowUploadOption(false)}>
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl w-full max-w-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
+                  <button onClick={() => setShowUploadOption(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5"/></button>
+                  <h3 className="text-xl font-serif font-bold text-center mb-2">Nova Análise</h3>
+                  <p className="text-xs text-slate-500 text-center mb-6">Envie até 3 fotos (Rosto, Perfil, Corpo) para maior precisão.</p>
+                  
+                  {/* Preview Grid */}
+                  <div className="grid grid-cols-3 gap-2 mb-6">
+                      {[0, 1, 2].map((i) => (
+                          <div key={i} className="aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border border-dashed border-slate-300 dark:border-slate-700 relative">
+                              {images[i] ? (
+                                  <>
+                                    <img src={images[i]} className="w-full h-full object-cover" />
+                                    <button onClick={() => removeImage(i)} className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full text-[8px]"><Trash2 className="w-2 h-2"/></button>
+                                  </>
+                              ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs font-bold">{i + 1}</div>
+                              )}
+                          </div>
+                      ))}
+                  </div>
+
+                  {/* User Metrics Input inside Modal */}
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Altura (m)</label>
+                            <input 
+                                type="number" 
+                                step="0.01"
+                                placeholder="Ex: 1.75"
+                                value={metrics.height}
+                                onChange={(e) => setMetrics({...metrics, height: e.target.value})}
+                                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:text-white focus:ring-2 focus:ring-vizu-gold focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 uppercase block mb-1">Peso (kg)</label>
+                            <input 
+                                type="number" 
+                                placeholder="Ex: 80"
+                                value={metrics.weight}
+                                onChange={(e) => setMetrics({...metrics, weight: e.target.value})}
+                                className="w-full p-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:text-white focus:ring-2 focus:ring-vizu-gold focus:outline-none"
+                            />
+                        </div>
+                  </div>
+
+                  <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                          <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={images.length >= 3}
+                            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 disabled:opacity-50"
+                          >
+                              <Upload className="w-4 h-4" /> Galeria
+                          </button>
+                          <button 
+                            onClick={() => startCamera('user')}
+                            disabled={images.length >= 3}
+                            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 disabled:opacity-50"
+                          >
+                              <Camera className="w-4 h-4" /> Câmera
+                          </button>
+                      </div>
+                      
+                      <button 
+                        onClick={startAnalysis}
+                        disabled={images.length === 0}
+                        className="w-full py-4 bg-vizu-dark text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                      >
+                          <Wand2 className="w-5 h-5" /> Analisar {images.length > 0 ? `(${images.length})` : ''}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Hidden File Input */}
+      <input 
+        type="file" 
+        ref={fileInputRef} 
+        className="hidden" 
+        accept="image/*" 
+        multiple
+        onChange={handleImageUpload} 
+      />
+
+      {/* Full Screen Camera View */}
+      {isCameraOpen && (
+             <div className="fixed inset-0 z-[100] bg-black flex flex-col">
+                 <div className="relative flex-1 overflow-hidden group">
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      className={`w-full h-full object-cover transition-transform duration-300 ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                    />
+                    
+                    {/* Visual Flash Effect */}
+                    <div className={`absolute inset-0 bg-white pointer-events-none transition-opacity duration-200 ease-out ${isFlashing ? 'opacity-100' : 'opacity-0'}`} />
+
+                    {/* Countdown Overlay */}
+                    {countdown !== null && (
+                        <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/20 backdrop-blur-sm animate-in fade-in zoom-in duration-300">
+                            <span className="text-9xl font-black text-white drop-shadow-2xl animate-pulse">
+                                {countdown}
+                            </span>
+                        </div>
+                    )}
+
+                    {/* Grid Overlay */}
+                    {showGrid && (
+                        <div className="absolute inset-0 pointer-events-none z-10 grid grid-cols-3 grid-rows-3 opacity-30">
+                            <div className="border-r border-b border-white"></div>
+                            <div className="border-r border-b border-white"></div>
+                            <div className="border-b border-white"></div>
+                            <div className="border-r border-b border-white"></div>
+                            <div className="border-r border-b border-white"></div>
+                            <div className="border-b border-white"></div>
+                            <div className="border-r border-white"></div>
+                            <div className="border-r border-white"></div>
+                            <div className=""></div>
+                        </div>
+                    )}
+
+                    <div className="absolute top-4 left-4 z-50">
+                        <button 
+                            onClick={stopCamera} 
+                            className="p-3 bg-black/40 backdrop-blur-md text-white rounded-full hover:bg-black/60 transition-all"
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                    </div>
+
+                    <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+                        <button 
+                            onClick={switchCamera} 
+                            className="p-3 bg-black/40 backdrop-blur-md text-white rounded-full hover:bg-black/60 transition-all"
+                        >
+                            <SwitchCamera className="w-6 h-6" />
+                        </button>
+                        <button 
+                            onClick={() => setShowGrid(!showGrid)} 
+                            className={`p-3 backdrop-blur-md rounded-full transition-all ${showGrid ? 'bg-vizu-gold text-white' : 'bg-black/40 text-white hover:bg-black/60'}`}
+                        >
+                            <Grid3X3 className="w-6 h-6" />
+                        </button>
+                        <button 
+                            onClick={() => setTimerDuration(prev => prev === 0 ? 3 : prev === 3 ? 10 : 0)} 
+                            className={`p-3 backdrop-blur-md rounded-full transition-all flex items-center justify-center font-bold ${timerDuration > 0 ? 'bg-vizu-gold text-white' : 'bg-black/40 text-white hover:bg-black/60'}`}
+                        >
+                            {timerDuration > 0 ? <span className="text-xs">{timerDuration}s</span> : <Timer className="w-6 h-6" />}
+                        </button>
+                    </div>
+                 </div>
+
+                 {/* Camera Controls */}
+                 <div className="h-40 bg-black flex flex-col items-center justify-center pb-6">
+                     {/* Gallery Strip */}
+                     <div className="flex gap-2 mb-4 h-12">
+                         {images.map((img, i) => (
+                             <div key={i} className="h-12 w-12 rounded overflow-hidden border border-white/50 relative">
+                                 <img src={img} className="h-full w-full object-cover" />
+                                 <div className="absolute top-0 right-0 bg-vizu-gold text-[8px] text-black px-1 font-bold">{i+1}</div>
+                             </div>
+                         ))}
+                         {Array.from({ length: 3 - images.length }).map((_, i) => (
+                             <div key={i} className="h-12 w-12 rounded border border-white/20 flex items-center justify-center text-white/20 text-xs">+</div>
+                         ))}
+                     </div>
+
+                     <div className="flex items-center gap-12">
+                        <div className="w-12 h-12"></div> {/* Spacer */}
+                        
+                        <button 
+                            onClick={handleCaptureClick}
+                            disabled={images.length >= 3}
+                            className={`w-20 h-20 rounded-full border-4 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] ${images.length >= 3 ? 'border-gray-500 bg-gray-800 opacity-50' : 'bg-white border-slate-300'}`}
+                        >
+                            <div className={`w-16 h-16 rounded-full border-2 ${images.length >= 3 ? 'border-gray-600 bg-gray-700' : 'bg-white border-black'}`} />
+                        </button>
+                        
+                        <button 
+                            onClick={finishCameraSession}
+                            disabled={images.length === 0}
+                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${images.length > 0 ? 'bg-vizu-gold text-white' : 'bg-slate-800 text-slate-500'}`}
+                        >
+                            <Check className="w-6 h-6" />
+                        </button>
+                     </div>
+                 </div>
+             </div>
+      )}
+
+      {/* Onboarding Overlay */}
+      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} />}
+      
+      {/* Auth Modal */}
+      <AuthModal 
+        isOpen={showAuth} 
+        onClose={() => setShowAuth(false)} 
+        onMockLogin={handleMockLogin}
+      />
+
+      {/* Profile Settings Modal */}
+      <ProfileSettingsModal 
+        isOpen={showProfileSettings}
+        onClose={() => setShowProfileSettings(false)}
+        preferences={userPreferences}
+        onSave={(prefs) => {
+            setUserPreferences(prefs);
+            addToast("Preferências salvas com sucesso!", "success");
+        }}
+      />
+
+      {/* Visagism Guide Modal */}
+      <VisagismGuideModal 
+        isOpen={showVisagismGuide}
+        onClose={() => setShowVisagismGuide(false)}
+      />
+
+      {/* Visagism Analysis Lab Modal */}
+      {showVisagismAnalysis && (
+        <VisagismAnalysis onClose={() => setShowVisagismAnalysis(false)} />
+      )}
+
+      {/* Full Screen Image Viewer / Refinement Modal */}
+      {viewingOutfitIndex !== null && analysisResult && (
+        <div className="fixed inset-0 z-[100] bg-black/95 flex flex-col animate-fade-in">
+             <div className="flex justify-between items-center p-4 text-white bg-black/50 backdrop-blur-md">
+                 <div>
+                    <h3 className="font-bold text-lg font-serif">{analysisResult.sugestoes_roupa[viewingOutfitIndex].titulo}</h3>
+                    <p className="text-xs text-slate-400">Provador Virtual de Alta Definição</p>
+                 </div>
+                 <button onClick={() => setViewingOutfitIndex(null)} className="p-2 hover:bg-white/10 rounded-full">
+                     <X className="w-6 h-6" />
+                 </button>
+             </div>
+             
+             <div className="flex-1 overflow-hidden relative flex items-center justify-center p-4">
+                 <div className="w-full h-full max-w-4xl flex items-center justify-center">
+                    <ComparisonView 
+                        generatedSrc={analysisResult.sugestoes_roupa[viewingOutfitIndex].generatedImage!}
+                        originalSrc={images[0]} // Use primary image
+                        alt="Full Screen View"
+                        onSave={() => {}}
+                        onExpand={() => {}} // Already expanded
+                        isSaving={false}
+                    />
+                 </div>
+             </div>
+
+             {/* Refinement Bar */}
+             <div className="bg-slate-900 border-t border-slate-800 p-4">
+                 <div className="max-w-3xl mx-auto">
+                     <form onSubmit={handleRefinementSubmit} className="flex gap-2">
+                         <div className="flex-1 relative">
+                             <input 
+                                type="text" 
+                                value={refinementPrompt}
+                                onChange={(e) => setRefinementPrompt(e.target.value)}
+                                placeholder="Ex: Ajuste a gola da camisa, mude a cor para azul marinho..."
+                                className="w-full bg-slate-800 text-white border border-slate-700 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-vizu-gold focus:outline-none"
+                             />
+                         </div>
+                         <button 
+                            type="submit"
+                            disabled={!refinementPrompt.trim() || isRefining}
+                            className="bg-vizu-gold hover:bg-yellow-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg disabled:opacity-50 flex items-center gap-2"
+                         >
+                            {isRefining ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
+                            Refinar
+                         </button>
+                     </form>
+                 </div>
+             </div>
+        </div>
+      )}
+
+      {/* Manual Visagism Edit Modal */}
+      <Modal
+        isOpen={isEditingVisagism}
+        onClose={cancelEditingVisagism}
+        title="Ajuste Manual de Visagismo"
+        icon={ScanFace}
+        sizeClass="max-w-2xl"
+      >
+         {tempVisagism && (
+             <div className="space-y-6">
+                 {/* ... existing edit form ... */}
+                 <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-100 dark:border-amber-800/30 text-sm text-amber-800 dark:text-amber-200">
+                     <Info className="w-4 h-4 inline mr-2" />
+                     Edite os parâmetros detectados pela IA para forçar um estilo específico nas próximas gerações.
+                 </div>
+                 <div>
+                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Estilo de Cabelo</label>
+                     <input 
+                        type="text" 
+                        value={tempVisagism.cabelo.estilo}
+                        onChange={(e) => setTempVisagism({...tempVisagism, cabelo: { ...tempVisagism.cabelo, estilo: e.target.value }})}
+                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                     />
+                 </div>
+                 <div>
+                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Detalhes Cabelo</label>
+                     <textarea 
+                        value={tempVisagism.cabelo.detalhes}
+                        onChange={(e) => setTempVisagism({...tempVisagism, cabelo: { ...tempVisagism.cabelo, detalhes: e.target.value }})}
+                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-24 resize-none"
+                     />
+                 </div>
+                 <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                     <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 mb-2">Maquiagem / Barba</label>
+                     <input 
+                        type="text" 
+                        value={tempVisagism.barba_ou_make.estilo}
+                        onChange={(e) => setTempVisagism({...tempVisagism, barba_ou_make: { ...tempVisagism.barba_ou_make, estilo: e.target.value }})}
+                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                     />
+                 </div>
+                 <div className="flex gap-3 pt-4">
+                     <button onClick={saveVisagismChanges} className="flex-1 py-3 bg-vizu-gold text-white rounded-xl font-bold">Salvar Alterações</button>
+                     <button onClick={cancelEditingVisagism} className="px-6 py-3 border border-slate-200 dark:border-slate-700 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-800">Cancelar</button>
+                 </div>
+             </div>
+         )}
+      </Modal>
+
+      {/* Manual Outfit Edit Modal */}
+      <Modal
+        isOpen={editingOutfitIndex !== null}
+        onClose={handleCancelEdit}
+        title="Editar Sugestão de Look"
+        icon={Edit}
+        sizeClass="max-w-3xl"
+      >
+          {tempOutfitData && (
+              <div className="space-y-6">
+                  {/* ... existing outfit edit form ... */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Título do Look</label>
+                          <input 
+                            type="text"
+                            value={tempOutfitData.titulo}
+                            onChange={(e) => setTempOutfitData({...tempOutfitData, titulo: e.target.value})}
+                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-bold"
+                          />
+                      </div>
+                      <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Ocasião</label>
+                          <input 
+                            type="text"
+                            value={tempOutfitData.ocasiao}
+                            onChange={(e) => setTempOutfitData({...tempOutfitData, ocasiao: e.target.value})}
+                            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl"
+                          />
+                      </div>
+                  </div>
+                  <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Descrição Detalhada</label>
+                      <textarea 
+                        value={tempOutfitData.detalhes}
+                        onChange={(e) => setTempOutfitData({...tempOutfitData, detalhes: e.target.value})}
+                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl h-24 resize-none"
+                      />
+                  </div>
+                  <div>
+                      <h4 className="font-bold text-slate-800 dark:text-white mb-3 flex items-center gap-2">
+                          <ShoppingBag className="w-4 h-4" /> Componentes & Lojas
+                      </h4>
+                      <div className="space-y-3">
+                          {tempOutfitData.components?.map((comp, idx) => (
+                              <div key={idx} className="flex gap-2 items-center bg-slate-50 dark:bg-slate-800/50 p-2 rounded-lg">
+                                  <span className="text-xs font-bold w-6 h-6 flex items-center justify-center bg-indigo-100 text-indigo-700 rounded-full">{idx + 1}</span>
+                                  <input 
+                                    type="text"
+                                    value={comp.peca}
+                                    onChange={(e) => handleComponentChange(idx, 'peca', e.target.value)}
+                                    placeholder="Peça"
+                                    className="flex-1 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                                  <input 
+                                    type="text"
+                                    value={comp.loja}
+                                    onChange={(e) => handleComponentChange(idx, 'loja', e.target.value)}
+                                    placeholder="Loja"
+                                    className="w-1/3 p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm"
+                                  />
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+                  <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <button onClick={handleSaveEdit} className="flex-1 py-3 bg-vizu-gold text-white rounded-xl font-bold shadow-lg">Salvar Alterações</button>
+                      <button onClick={handleCancelEdit} className="px-6 py-3 border border-slate-200 dark:border-slate-700 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-800">Cancelar</button>
+                  </div>
+              </div>
+          )}
+      </Modal>
+
+    </div>
+  );
+}
