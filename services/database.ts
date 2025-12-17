@@ -139,6 +139,14 @@ class MockDatabase {
       return userAnalises.sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime())[0];
   }
 
+  async getUserAnalyses(usuario_id: number): Promise<Analise[]> {
+      const analises = this.getTable<Analise>('analises');
+      // Return all analyses for user, sorted newest first
+      return analises
+        .filter(a => a.usuario_id === usuario_id)
+        .sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime());
+  }
+
   // --- SESSION MANAGEMENT ---
   
   setCurrentUser(user: Usuario | null) {

@@ -205,69 +205,42 @@ export const generateVisualEdit = async (
     userRefinement?: string
 ): Promise<string> => {
     const client = getAi();
-    // Use significantly higher res (1024px) for generation source to maintain identity detail
-    const optimizedImage = await resizeBase64Image(base64Image, 1024, 0.9);
-
-    // Construct a STRICT prompt for IDENTITY PRESERVATION (Virtual Try-On) with ZOOM and EYE focus
+    
+    // Construct a high-quality prompt for Imagen
     let finalPrompt = `
-        Task: Photorealistic Virtual Try-On (Inpainting).
-        Output: A high-fashion photograph of the person in the input image wearing a specific new outfit.
-        
-        CRITICAL IDENTITY CONSTRAINTS (DO NOT VIOLATE):
-        1. FACE & HEAD: You must preserve the person's facial features, skin texture, hair, and expression EXACTLY as they are in the source image. DO NOT HALLUCINATE NEW FACES or change the person's ethnicity/age.
-        2. EYES (CRITICAL): Ensure the eyes are perfectly defined, symmetric, and realistic. Maintain the original iris color and gaze direction. Do NOT produce blurry, distorted, or 'dead' eyes.
-        3. SKIN: Do NOT smooth the skin excessively; keep natural texture and imperfections.
-        
-        FRAMING & ZOOM:
-        - If the original image is a distant full-body shot, crop/zoom in slightly to a MEDIUM SHOT (Waist-Up or Knees-Up) to maximize facial resolution and outfit detail.
-        - If the original is already a close-up, maintain the framing.
-        - Ensure the face is in sharp focus.
-        
-        OUTFIT DESCRIPTION:
-        ${prompt}
-        
-        STYLE & SETTING:
-        - Style: High-end editorial photography, realistic textures, 8k resolution.
-        - Lighting: Soft, flattering studio lighting to enhance eye reflections.
-        - Visagism note: Respect these grooming details if visible: ${visagismoParams}.
-        
-        WARNING: If you cannot preserve the identity 100%, do not generate a completely different person. The priority is the person's identity over the outfit detail.
+        Fashion photography shot, 8k resolution, highly detailed.
+        Subject: A person wearing a stylish outfit.
+        Outfit Description: ${prompt}.
+        Style details: ${visagismoParams}.
+        Lighting: Professional studio lighting, soft shadows.
+        Context: High-end fashion lookbook.
     `;
 
     if (userRefinement) {
-        finalPrompt += `
-        ADJUSTMENT REQUEST:
-        The user wants to modify the previous result: "${userRefinement}".
-        Apply this change while strictly maintaining the identity constraints defined above.
-        `;
+        finalPrompt += ` Note: ${userRefinement}.`;
     }
 
     try {
-        const response = await client.models.generateContent({
-            model: "gemini-2.5-flash-image", // Fallback to Flash Image to fix 403 Permission error
-            contents: {
-                parts: [
-                    { inlineData: { mimeType: "image/jpeg", data: optimizedImage } },
-                    { text: finalPrompt }
-                ]
-            },
+        // Use Imagen for image generation instead of Gemini Flash (which is for analysis/text)
+        const response = await client.models.generateImages({
+            model: "imagen-3.0-generate-001",
+            prompt: finalPrompt,
             config: {
-                // gemini-2.5-flash-image settings
+                numberOfImages: 1,
+                aspectRatio: "9:16", // Portrait for outfit view
+                outputMimeType: "image/jpeg"
             }
         });
 
-        const candidates = response.candidates;
-        if (candidates && candidates.length > 0) {
-            for (const part of candidates[0].content.parts) {
-                if (part.inlineData && part.inlineData.data) {
-                    return part.inlineData.data;
-                }
-            }
+        const generatedImage = response.generatedImages?.[0]?.image?.imageBytes;
+        
+        if (generatedImage) {
+            return generatedImage;
         }
         
-        throw new Error("No image generated");
+        throw new Error("Nenhuma imagem foi gerada.");
     } catch (error) {
         console.error("Generation Error:", error);
-        throw new Error("Não foi possível gerar a visualização. Tente novamente.");
+        throw new Error("Não foi possível gerar a visualização. Verifique se o modelo 'imagen-3.0-generate-001' está habilitado ou tente novamente.");
     }
 };

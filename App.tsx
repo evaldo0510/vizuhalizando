@@ -8,7 +8,7 @@ import {
   Info, ShoppingBag, ExternalLink, Send, Image as ImageIcon, Filter, Save, XCircle,
   ArrowUpDown, Palette, Sliders, MapPin, Briefcase, Sun, Moon, Coffee, Dumbbell,
   Focus, Tag, Edit, Pencil, Scan, Zap, ChevronDown, Shirt, Bell, Search, Home as HomeIcon, FileText, Smartphone,
-  ThumbsUp, ThumbsDown, Package, Layers, ZoomIn
+  ThumbsUp, ThumbsDown, Package, Layers, ZoomIn, Clock, Lightbulb
 } from 'lucide-react';
 import { Onboarding } from './components/Onboarding';
 import { AuthModal } from './components/AuthModal';
@@ -21,7 +21,7 @@ import { ProfileSettingsModal } from './components/ProfileSettingsModal';
 import { analyzeImageWithGemini, generateVisualEdit } from './services/geminiService';
 import { generateDossierPDF } from './services/pdfService';
 import { LandingPage } from './components/LandingPage'; 
-import { db } from './services/database';
+import { db, Analise } from './services/database';
 import type { AnalysisResult, OutfitSuggestion, UserRole, SkinTone, ColorPalette, UserMetrics, Visagismo, UserPreferences } from './types';
 
 // Enhanced Skin Tone Data for Brazilian Diversity
@@ -127,6 +127,7 @@ const playShutterSound = () => {
 export default function App() {
   const [user, setUser] = useState<{ displayName: string | null; email: string | null; photoURL: string | null; uid: string } | null>(null);
   const [image, setImage] = useState<string | null>(null); // Reverted to single image
+  const [history, setHistory] = useState<Analise[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   
@@ -233,8 +234,12 @@ export default function App() {
                   });
                   setShowLanding(false);
                   
+                  // Load full history
+                  const userHistory = await db.getUserAnalyses(savedUser.id);
+                  setHistory(userHistory);
+
                   // If logged in, try to load last analysis
-                  const lastAnalysis = await db.getLastAnalise(savedUser.id);
+                  const lastAnalysis = userHistory[0];
                   if (lastAnalysis) {
                       setAnalysisResult(lastAnalysis.resultado_json);
                       setImage(lastAnalysis.foto_url);
@@ -266,6 +271,7 @@ export default function App() {
   const handleLogout = () => {
       db.setCurrentUser(null);
       setUser(null);
+      setHistory([]);
       handleClearData();
       setShowLanding(true);
   };
@@ -278,6 +284,43 @@ export default function App() {
       setDeferredPrompt(null);
     }
   };
+
+  const handleLoadHistory = (item: Analise) => {
+      setAnalysisResult(item.resultado_json);
+      setImage(item.foto_url);
+      setCurrentView('analysis');
+      addToast("Análise carregada do histórico.", "success");
+  };
+
+  // Generate a random daily tip based on history
+  const getDailyTip = () => {
+      if (history.length === 0) return null;
+      const last = history[0].resultado_json;
+      if (!last) return null;
+
+      // Simple pseudo-random logic based on minutes to keep it static for a bit
+      const isEven = new Date().getMinutes() % 2 === 0;
+      
+      if (isEven) {
+          return {
+              title: "Insight de Cor",
+              text: `Sua pele com subtom ${last.tom_pele_detectado || 'neutro'} brilha com ${last.paleta_cores?.[0]?.nome || 'tons terrosos'}. Experimente hoje!`,
+              icon: Palette,
+              color: "text-rose-500",
+              bg: "bg-rose-50 dark:bg-rose-900/20"
+          };
+      } else {
+          return {
+              title: "Dica de Visagismo",
+              text: `Para valorizar seu rosto ${last.formato_rosto_detalhado}, aposte em ${last.visagismo?.acessorios?.[0] || 'acessórios que criem contraste'}.`,
+              icon: ScanFace,
+              color: "text-indigo-500",
+              bg: "bg-indigo-50 dark:bg-indigo-900/20"
+          };
+      }
+  };
+
+  const dailyTip = getDailyTip();
 
   // Helper: Toast
   const addToast = (msg: string, type: 'success' | 'error' | 'info') => {
@@ -311,6 +354,8 @@ export default function App() {
           nivel_acesso: u.role === 'admin' ? 'admin' : 'user',
           data_cadastro: new Date().toISOString()
       });
+      // Fetch history immediately
+      db.getUserAnalyses(parseInt(u.uid) || 0).then(h => setHistory(h));
       enterApp();
   };
 
@@ -372,7 +417,8 @@ export default function App() {
 
       // SAVE TO DB if user is logged in
       if (user) {
-          await db.saveAnalise(parseInt(user.uid) || 0, inputImage, result);
+          const newAnalise = await db.saveAnalise(parseInt(user.uid) || 0, inputImage, result);
+          setHistory(prev => [newAnalise, ...prev]);
       }
 
       addToast("Análise de estilo concluída!", "success");
@@ -845,6 +891,8 @@ export default function App() {
   const handleExportComparison = async () => {
     if (selectedOutfits.length === 0) return;
     setIsGeneratingComparison(true);
+    addToast("Gerando board comparativo...", "info");
+    
     try {
         const canvas = document.createElement('canvas');
         canvas.width = 1920;
@@ -854,6 +902,7 @@ export default function App() {
         
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
         // Header
         const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
         gradient.addColorStop(0, "#1e1b4b"); // Indigo 950
@@ -872,23 +921,54 @@ export default function App() {
         ctx.fillText(`ANÁLISE SOB MEDIDA PARA ${userName}`, canvas.width / 2, 115);
         
         const count = selectedOutfits.length;
+        // Divide remaining width among outfits
         const colWidth = canvas.width / count;
-        const startY = 210;
         const margin = 40;
+        const imageY = 250;
+        const imageH = 700; // Fixed height for images
+        
+        // Load original image once
+        const originalImg = new Image();
+        if (image) {
+            originalImg.crossOrigin = "anonymous";
+            originalImg.src = image;
+            await new Promise(r => originalImg.onload = r);
+        }
 
-        selectedOutfits.forEach((outfit, index) => {
-             const colX = index * colWidth;
+        // Draw each outfit column
+        for (let i = 0; i < count; i++) {
+             const outfit = selectedOutfits[i];
+             const colX = i * colWidth;
              const contentX = colX + margin;
              
+             // Draw Text
              ctx.fillStyle = "#1e293b";
              ctx.font = "bold 30px 'Inter', sans-serif";
              ctx.textAlign = "left";
-             ctx.fillText(outfit.titulo, contentX, startY);
-        });
+             ctx.fillText(outfit.titulo, contentX, 220);
+             
+             // Draw Image (Generated or Original as fallback)
+             const targetSrc = outfit.generatedImage || image;
+             if (targetSrc) {
+                 const img = new Image();
+                 img.crossOrigin = "anonymous";
+                 img.src = targetSrc;
+                 await new Promise((resolve, reject) => {
+                     img.onload = resolve;
+                     img.onerror = () => { console.warn("Failed to load outfit image for export"); resolve(null); };
+                 });
+                 
+                 // Calc aspect ratio fit
+                 const availableW = colWidth - (margin * 2);
+                 // Draw fitted image
+                 ctx.drawImage(img, contentX, imageY, availableW, imageH);
+             }
+        }
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         await handleSaveOrShareImage(dataUrl, `Vizu-Board-${userName}`);
     } catch (e) {
+        console.error(e);
         addToast("Erro ao gerar comparativo", "error");
     } finally {
         setIsGeneratingComparison(false);
@@ -1041,6 +1121,23 @@ export default function App() {
                 </div>
             </div>
 
+            {/* Daily Style Insight Widget (New Feature) */}
+            {dailyTip && (
+                <div className="px-6 mb-8 animate-fade-in">
+                    <div className={`p-4 rounded-2xl border flex items-start gap-4 shadow-sm ${dailyTip.bg} border-transparent`}>
+                        <div className={`p-3 rounded-full bg-white dark:bg-slate-800 shadow-sm ${dailyTip.color}`}>
+                            <dailyTip.icon className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h4 className={`font-bold text-sm mb-1 ${dailyTip.color}`}>{dailyTip.title}</h4>
+                            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                                {dailyTip.text}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Hero / Profile Card */}
             <div className="px-6 mb-8">
                 <div className="bg-white dark:bg-zinc-800 rounded-[2rem] p-6 shadow-xl relative overflow-hidden text-center border border-gray-100 dark:border-zinc-700">
@@ -1088,25 +1185,42 @@ export default function App() {
                 </div>
             </div>
 
-            {/* Featured Looks Grid (Placeholder) */}
+            {/* History Section */}
             <div className="px-6 mb-8">
                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="font-serif font-bold text-lg text-brand-graphite dark:text-white">Featured looks</h3>
+                    <h3 className="font-serif font-bold text-lg text-brand-graphite dark:text-white">Seu Histórico</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="rounded-2xl overflow-hidden h-64 bg-gray-200 dark:bg-zinc-800 relative group">
-                        <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=500&auto=format&fit=crop&q=60" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors"></div>
+                {history.length > 0 ? (
+                    <div className="grid grid-cols-2 gap-4">
+                        {history.map((item) => (
+                            <div 
+                                key={item.id} 
+                                onClick={() => handleLoadHistory(item)}
+                                className="rounded-2xl overflow-hidden bg-white dark:bg-zinc-800 border border-slate-100 dark:border-zinc-700 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+                            >
+                                <div className="h-32 bg-gray-200 dark:bg-zinc-700 relative overflow-hidden">
+                                    <img src={item.foto_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors"></div>
+                                </div>
+                                <div className="p-3">
+                                    <p className="font-bold text-xs text-brand-graphite dark:text-white truncate">
+                                        Análise {item.resultado_json.biotipo}
+                                    </p>
+                                    <div className="flex items-center gap-1 text-[10px] text-gray-500 mt-1">
+                                        <Clock className="w-3 h-3" />
+                                        {new Date(item.data_analise).toLocaleDateString('pt-BR')}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
-                    <div className="space-y-4">
-                        <div className="rounded-2xl overflow-hidden h-28 bg-gray-200 dark:bg-zinc-800 relative group">
-                            <img src="https://images.unsplash.com/photo-1487222477894-8943e31ef7b2?w=500&auto=format&fit=crop&q=60" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="rounded-2xl overflow-hidden h-32 bg-gray-200 dark:bg-zinc-800 relative group">
-                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=60" className="w-full h-full object-cover" />
-                        </div>
+                ) : (
+                    <div className="text-center p-8 bg-slate-50 dark:bg-zinc-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-zinc-700">
+                        <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                        <p className="text-sm text-slate-500 font-medium">Você ainda não tem looks salvos.</p>
+                        <p className="text-xs text-slate-400">Faça sua primeira análise para começar.</p>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Bottom Nav */}
@@ -1130,6 +1244,497 @@ export default function App() {
                     <UserIcon className={`w-6 h-6 ${currentView === 'profile' && 'fill-current'}`} />
                 </button>
             </div>
+        </div>
+      )}
+
+      {/* --- ANALYSIS / RESULT VIEW --- */}
+      {(analysisResult || isAnalyzing) && (
+        <div className="container mx-auto px-4 py-8 max-w-5xl">
+            {/* Header Actions */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 mb-8">
+                <button 
+                    onClick={() => { setCurrentView('home'); }}
+                    className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium text-sm"
+                >
+                    <ArrowRight className="w-4 h-4 rotate-180" />
+                    Voltar ao Início
+                </button>
+                
+                <div className="flex flex-wrap gap-2">
+                    <button 
+                        onClick={() => setShowComparison(!showComparison)}
+                        disabled={!analysisResult}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                            showComparison 
+                            ? 'bg-brand-graphite text-white border-brand-graphite' 
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                    >
+                        <Layout className="w-4 h-4" />
+                        {showComparison ? 'Ocultar Comparativo' : 'Modo Comparativo'}
+                    </button>
+                    
+                    <button 
+                        onClick={handleExportAnalysis}
+                        disabled={isGeneratingDossier || !analysisResult}
+                        className="flex items-center gap-2 px-4 py-2 bg-brand-gold text-white rounded-xl text-xs font-bold hover:bg-yellow-600 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        {isGeneratingDossier ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                        Baixar Dossier PDF
+                    </button>
+                </div>
+            </div>
+
+            {/* Analysis Loading State */}
+            {isAnalyzing && (
+                <div className="flex flex-col items-center justify-center min-h-[50vh] animate-fade-in space-y-6">
+                <div className="relative">
+                    <div className="w-24 h-24 border-4 border-brand-gold/30 border-t-brand-gold rounded-full animate-spin"></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-brand-gold animate-pulse" />
+                    </div>
+                </div>
+                <div className="text-center space-y-2">
+                    <h3 className="text-xl font-serif font-bold text-brand-graphite dark:text-white">Analisando Perfil</h3>
+                    <p className="text-slate-500 text-sm animate-pulse">Cruzando dados de rosto, cabelo e corpo...</p>
+                </div>
+                </div>
+            )}
+
+            {/* Results */}
+            {analysisResult && !isAnalyzing && (
+               <div className="animate-fade-in space-y-8">
+                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                       {/* Left Column: Profile Card */}
+                       <div className="lg:col-span-4 space-y-6">
+                           <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 sticky top-24">
+                               <div className="relative h-96 group">
+                                   {/* Display Primary Image */}
+                                   <img src={image || ""} alt="User Primary" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                   
+                                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                                   
+                                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
+                                       <div className="flex items-center gap-2 mb-2">
+                                           <span className="px-2 py-1 bg-brand-gold rounded-md text-[10px] font-bold uppercase tracking-wider text-black">
+                                               {analysisResult.genero}
+                                           </span>
+                                           <span className="px-2 py-1 bg-white/20 backdrop-blur-md rounded-md text-[10px] font-bold uppercase tracking-wider border border-white/10">
+                                               {metrics.height}m • {metrics.weight}kg
+                                           </span>
+                                       </div>
+                                       <h2 className="text-3xl font-bold font-serif mb-1">{analysisResult.formato_rosto_detalhado}</h2>
+                                       <p className="text-slate-300 text-sm font-medium">{analysisResult.biotipo}</p>
+                                   </div>
+
+                                   <button 
+                                       onClick={startEditingVisagism}
+                                       className="absolute top-4 right-4 p-2 bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-full text-white transition-colors opacity-0 group-hover:opacity-100"
+                                   >
+                                       <Edit3 className="w-4 h-4" />
+                                   </button>
+                               </div>
+                               
+                               {/* Color Palette Section */}
+                               <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                                   <div className="flex items-center justify-between mb-4">
+                                       <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                           <Palette className="w-4 h-4 text-brand-gold" />
+                                           Cartela de Cores
+                                       </h3>
+                                       {/* Skin Tone Selector */}
+                                       <div className="relative group/tone">
+                                           <button className="text-[10px] font-bold px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-slate-600 dark:text-slate-300 flex items-center gap-1 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                               {currentSkinTone} <ChevronDown className="w-3 h-3" />
+                                           </button>
+                                           <div className="absolute right-0 mt-1 w-32 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden hidden group-hover/tone:block z-20 animate-fade-in">
+                                               {(['Quente', 'Frio', 'Neutro', 'Oliva'] as SkinTone[]).map((tone) => (
+                                                   <button 
+                                                       key={tone}
+                                                       onClick={() => handleSkinToneChange(tone)}
+                                                       className={`w-full text-left px-4 py-2 text-xs font-bold hover:bg-slate-50 dark:hover:bg-slate-700 ${currentSkinTone === tone ? 'text-brand-gold bg-amber-50 dark:bg-amber-900/20' : 'text-slate-600 dark:text-slate-400'}`}
+                                                   >
+                                                       {tone}
+                                                   </button>
+                                               ))}
+                                           </div>
+                                       </div>
+                                   </div>
+                                   
+                                   <div className="grid grid-cols-4 gap-3 mb-4">
+                                       {analysisResult.paleta_cores.map((color, idx) => (
+                                           <div key={idx} className="group relative cursor-pointer">
+                                               <div 
+                                                   className="w-full aspect-square rounded-full shadow-sm border border-black/5 transform transition-transform hover:scale-110"
+                                                   style={{ backgroundColor: color.hex }}
+                                               ></div>
+                                               <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none">
+                                                   {color.nome}
+                                               </span>
+                                           </div>
+                                       ))}
+                                   </div>
+                                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+                                       {analysisResult.analise_pele}
+                                   </p>
+                               </div>
+
+                               {/* Visagism Details */}
+                               <div className="p-6 space-y-4">
+                                   <div>
+                                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Cabelo & Grooming</h4>
+                                       <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-1">
+                                           {analysisResult.visagismo.cabelo.estilo}
+                                       </p>
+                                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                           {analysisResult.visagismo.cabelo.motivo}
+                                       </p>
+                                       
+                                       {/* Hair Products and Techniques */}
+                                       {(analysisResult.visagismo.cabelo.produtos || analysisResult.visagismo.cabelo.tecnicas) && (
+                                           <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 gap-2">
+                                               {analysisResult.visagismo.cabelo.produtos && (
+                                                   <div className="bg-indigo-50 dark:bg-indigo-900/20 p-2 rounded-lg">
+                                                       <span className="text-[10px] font-bold text-indigo-500 uppercase block mb-1">Produtos Sugeridos</span>
+                                                       <p className="text-xs text-indigo-700 dark:text-indigo-200">{analysisResult.visagismo.cabelo.produtos.join(', ')}</p>
+                                                   </div>
+                                               )}
+                                               {analysisResult.visagismo.cabelo.tecnicas && (
+                                                   <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-lg">
+                                                       <span className="text-[10px] font-bold text-emerald-500 uppercase block mb-1">Técnicas</span>
+                                                       <p className="text-xs text-emerald-700 dark:text-emerald-200">{analysisResult.visagismo.cabelo.tecnicas.join(', ')}</p>
+                                                   </div>
+                                               )}
+                                           </div>
+                                       )}
+                                   </div>
+                                   
+                                   <div>
+                                       <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Ótica & Acessórios</h4>
+                                       <p className="text-sm text-slate-700 dark:text-slate-300 font-medium mb-1">
+                                           {analysisResult.otica.armacao} ({analysisResult.otica.material})
+                                       </p>
+                                       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                           {analysisResult.otica.motivo}
+                                       </p>
+                                   </div>
+                               </div>
+                           </div>
+                       </div>
+
+                       {/* Right Column: Outfits */}
+                       <div className="lg:col-span-8">
+                           {/* Comparison Board logic here (kept same as before) */}
+                           {showComparison && (
+                               <div className="mb-8 bg-slate-900 rounded-3xl p-6 text-white border border-slate-800 animate-fade-in relative overflow-hidden">
+                                   {/* Content from previous iteration... */}
+                                   <div className="absolute top-0 right-0 w-64 h-64 bg-brand-gold rounded-full blur-[100px] opacity-20 -mr-20 -mt-20 pointer-events-none"></div>
+                                   <div className="flex justify-between items-center mb-6 relative z-10">
+                                       <div>
+                                           <h3 className="text-2xl font-bold mb-1 font-serif">Board Comparativo</h3>
+                                           <p className="text-slate-400 text-sm">Selecione até 3 looks para comparar lado a lado.</p>
+                                       </div>
+                                       <button 
+                                           onClick={handleExportComparison}
+                                           disabled={selectedOutfits.length === 0 || isGeneratingComparison}
+                                           className="px-6 py-2 bg-brand-gold hover:bg-yellow-600 rounded-xl font-bold text-sm shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-white"
+                                       >
+                                           {isGeneratingComparison ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                                           Exportar Board
+                                       </button>
+                                   </div>
+                                   <div className="grid grid-cols-3 gap-4 min-h-[200px] relative z-10">
+                                       {selectedOutfits.length === 0 ? (
+                                           <div className="col-span-3 flex flex-col items-center justify-center border-2 border-dashed border-slate-700 rounded-2xl h-48 text-slate-500">
+                                               <Layout className="w-8 h-8 mb-2 opacity-50" />
+                                               <p className="text-sm font-medium">Clique no ícone <Plus className="w-3 h-3 inline" /> nos cards abaixo para adicionar</p>
+                                           </div>
+                                       ) : (
+                                           selectedOutfits.map((outfit, idx) => (
+                                               <div key={idx} className="relative group bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+                                                   <button 
+                                                       onClick={() => toggleOutfitSelection(outfit)}
+                                                       className="absolute top-2 right-2 p-1.5 bg-black/60 text-white rounded-full hover:bg-red-500 transition-colors z-10"
+                                                   >
+                                                       <X className="w-3 h-3" />
+                                                   </button>
+                                                   <div className="h-32 bg-slate-700 relative">
+                                                       {outfit.generatedImage ? (
+                                                           <img src={outfit.generatedImage} className="w-full h-full object-cover" />
+                                                       ) : (
+                                                           <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">Sem Imagem</div>
+                                                       )}
+                                                   </div>
+                                                   <div className="p-3">
+                                                       <p className="font-bold text-xs truncate text-white">{outfit.titulo}</p>
+                                                       <p className="text-[10px] text-slate-400 truncate">{outfit.ocasiao}</p>
+                                                   </div>
+                                               </div>
+                                           ))
+                                       )}
+                                       {selectedOutfits.length > 0 && selectedOutfits.length < 3 && (
+                                           Array.from({ length: 3 - selectedOutfits.length }).map((_, i) => (
+                                               <div key={i} className="border-2 border-dashed border-slate-800 rounded-xl flex items-center justify-center text-slate-700">
+                                                   <span className="text-xs font-bold">Vazio</span>
+                                               </div>
+                                           ))
+                                       )}
+                                   </div>
+                               </div>
+                           )}
+
+                           {/* Filter Bar */}
+                           <div className="flex flex-col gap-4 mb-6">
+                               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+                                   <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-2 sm:pb-0 custom-scrollbar">
+                                       {getUniqueOccasions().map(occ => (
+                                           <button
+                                               key={occ}
+                                               onClick={() => setActiveOutfitFilter(occ)}
+                                               className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${
+                                                   activeOutfitFilter === occ 
+                                                   ? 'bg-brand-graphite text-white shadow-md' 
+                                                   : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                               }`}
+                                           >
+                                               {occ}
+                                           </button>
+                                       ))}
+                                   </div>
+                                   
+                                   <div className="flex items-center gap-2 self-end sm:self-auto">
+                                       <button 
+                                           onClick={() => setShowFilters(!showFilters)}
+                                           className={`flex items-center gap-2 px-3 py-2 border rounded-lg text-xs font-bold transition-colors ${showFilters ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'}`}
+                                       >
+                                           <Filter className="w-3 h-3" />
+                                           Filtros
+                                       </button>
+
+                                       <button 
+                                           onClick={() => setOutfitSortOrder(prev => prev === 'relevance' ? 'favorites' : 'relevance')}
+                                           className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                       >
+                                           <ArrowUpDown className="w-3 h-3" />
+                                           {outfitSortOrder === 'relevance' ? 'Relevância' : 'Favoritos'}
+                                       </button>
+                                       
+                                       <button 
+                                           onClick={handleGenerateAllLooks}
+                                           disabled={isGeneratingAll}
+                                           className="flex items-center gap-2 px-4 py-2 bg-brand-gold hover:bg-yellow-600 text-white rounded-lg text-xs font-bold shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                                       >
+                                           {isGeneratingAll ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
+                                           Provador Mágico (Todos)
+                                       </button>
+                                   </div>
+                               </div>
+
+                               {/* Expanded Filters */}
+                               {showFilters && (
+                                   <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 animate-fade-in grid grid-cols-2 md:grid-cols-4 gap-4">
+                                       <div>
+                                           <label className="text-[10px] font-bold text-slate-500 uppercase block mb-2">Estação/Clima</label>
+                                           <select 
+                                               className="w-full text-xs p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                                               value={filterCriteria.season}
+                                               onChange={(e) => setFilterCriteria({...filterCriteria, season: e.target.value})}
+                                           >
+                                               <option value="Todos">Todos</option>
+                                               <option value="Primavera">Primavera</option>
+                                               <option value="Verão">Verão</option>
+                                               <option value="Outono">Outono</option>
+                                               <option value="Inverno">Inverno</option>
+                                           </select>
+                                       </div>
+                                       <div>
+                                           <label className="text-[10px] font-bold text-slate-500 uppercase block mb-2">Salvos</label>
+                                           <button 
+                                               onClick={() => setOutfitSortOrder(prev => prev === 'relevance' ? 'favorites' : 'relevance')}
+                                               className={`w-full text-xs p-2 rounded-lg border font-bold ${outfitSortOrder === 'favorites' ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}
+                                           >
+                                               {outfitSortOrder === 'favorites' ? 'Apenas Salvos' : 'Todos os Looks'}
+                                           </button>
+                                       </div>
+                                   </div>
+                               )}
+                           </div>
+
+                           {/* Outfit Cards */}
+                           <div className="space-y-6">
+                               {filteredAndSortedOutfits.map((outfit, index) => {
+                                   const originalIndex = analysisResult.sugestoes_roupa.findIndex(o => o.titulo === outfit.titulo);
+                                   return (
+                                   <div key={originalIndex} className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-sm border border-slate-100 dark:border-slate-800 transition-all hover:shadow-lg hover:border-brand-gold/30 group">
+                                       <div className="flex flex-col md:flex-row gap-8">
+                                           {/* Visualization Area */}
+                                           <div className="w-full md:w-5/12 flex-shrink-0">
+                                               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-inner">
+                                                   {generatingOutfitIndex === originalIndex ? (
+                                                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm z-10">
+                                                           <Loader2 className="w-10 h-10 text-brand-gold animate-spin mb-4" />
+                                                           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider animate-pulse">Criando Visualização...</p>
+                                                       </div>
+                                                   ) : outfit.generatedImage ? (
+                                                       <ComparisonView 
+                                                           generatedSrc={outfit.generatedImage}
+                                                           originalSrc={image || ""} // Using primary image for comparison
+                                                           alt={outfit.titulo}
+                                                           onSave={() => handleSaveOrShareImage(outfit.generatedImage!, `Vizu-TryOn-${index}`)}
+                                                           onExpand={() => setViewingOutfitIndex(originalIndex)}
+                                                           isSaving={false}
+                                                       />
+                                                   ) : (
+                                                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+                                                           <div className="w-16 h-16 bg-brand-gold/10 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-500">
+                                                               <Shirt className="w-8 h-8 text-brand-gold" />
+                                                           </div>
+                                                           <h4 className="font-bold text-slate-900 dark:text-white mb-2">Visualização Pendente</h4>
+                                                           <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 max-w-[200px]">
+                                                               Use a IA generativa para provar este look virtualmente na sua foto.
+                                                           </p>
+                                                           <button 
+                                                               onClick={() => handleGenerateLook(originalIndex, outfit)}
+                                                               className="px-6 py-3 bg-brand-graphite text-white rounded-xl text-xs font-bold hover:scale-105 transition-transform shadow-lg flex items-center gap-2"
+                                                           >
+                                                               <Wand2 className="w-3 h-3" />
+                                                               Gerar Provador Virtual
+                                                           </button>
+                                                       </div>
+                                                   )}
+                                                   
+                                                   <button 
+                                                       onClick={() => toggleOutfitFavorite(originalIndex)}
+                                                       className="absolute top-3 right-3 p-2 rounded-full bg-white/80 dark:bg-black/60 backdrop-blur-md shadow-sm hover:scale-110 transition-transform z-20"
+                                                   >
+                                                       <Heart 
+                                                           className={`w-5 h-5 transition-colors ${outfit.isFavorite ? 'fill-red-500 text-red-500' : 'text-slate-400'}`} 
+                                                       />
+                                                   </button>
+                                               </div>
+                                               
+                                               <div className="flex gap-2 mt-4">
+                                                   <button 
+                                                       onClick={() => toggleOutfitSelection(outfit)}
+                                                       className={`flex-1 py-2.5 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                                                           selectedOutfits.some(o => o.titulo === outfit.titulo)
+                                                           ? 'bg-brand-gold text-white border-brand-gold'
+                                                           : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                                                       }`}
+                                                   >
+                                                       {selectedOutfits.some(o => o.titulo === outfit.titulo) ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                                                       Comparar
+                                                   </button>
+                                                   <button 
+                                                       onClick={() => handleShareLook(outfit)}
+                                                       className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                                   >
+                                                       <Share2 className="w-4 h-4" />
+                                                   </button>
+                                               </div>
+                                           </div>
+
+                                           {/* Content Area */}
+                                           <div className="w-full md:w-7/12 flex flex-col">
+                                               <div className="flex items-start justify-between mb-2">
+                                                   <div>
+                                                       <span className="text-[10px] font-bold text-brand-gold uppercase tracking-wider mb-1 block">
+                                                           {outfit.ocasiao}
+                                                       </span>
+                                                       <h3 className="text-xl font-serif font-bold text-slate-900 dark:text-white leading-tight">
+                                                           {outfit.titulo}
+                                                       </h3>
+                                                   </div>
+                                                   <button 
+                                                       onClick={() => handleStartEdit(originalIndex, outfit)}
+                                                       className="p-2 text-slate-400 hover:text-brand-gold hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-colors"
+                                                   >
+                                                       <Pencil className="w-4 h-4" />
+                                                   </button>
+                                               </div>
+
+                                               <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-6 font-medium">
+                                                   {outfit.detalhes}
+                                               </p>
+
+                                               {/* Components List */}
+                                               <div className="space-y-3 mb-6 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-800">
+                                                   <h5 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                                       <ShoppingBag className="w-3 h-3" />
+                                                       Onde Encontrar
+                                                   </h5>
+                                                   <div className="space-y-2">
+                                                       {(outfit.components || []).map((comp, i) => (
+                                                           <div key={i} className="flex items-center justify-between text-sm group/item">
+                                                               <div className="flex items-center gap-2 overflow-hidden">
+                                                                   <div className="w-1.5 h-1.5 rounded-full bg-brand-gold flex-shrink-0"></div>
+                                                                   <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{comp.peca}</span>
+                                                                   <span className="text-slate-400 text-xs">• {comp.loja}</span>
+                                                               </div>
+                                                               <a 
+                                                                   href={comp.link} 
+                                                                   target="_blank" 
+                                                                   rel="noopener noreferrer"
+                                                                   className="flex items-center gap-1 text-brand-gold font-bold text-xs hover:underline opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                               >
+                                                                   Ver Loja <ExternalLink className="w-3 h-3" />
+                                                               </a>
+                                                           </div>
+                                                       ))}
+                                                   </div>
+                                               </div>
+
+                                               {/* Stylist Note & Feedback */}
+                                               <div className="mt-auto">
+                                                   <div className="flex items-start gap-3 p-3 bg-amber-50 dark:bg-amber-900/10 rounded-lg border border-amber-100 dark:border-amber-800/30">
+                                                       <Sparkles className="w-4 h-4 text-brand-gold mt-0.5 flex-shrink-0" />
+                                                       <div>
+                                                           <h5 className="text-xs font-bold text-amber-900 dark:text-amber-300 mb-1">Stylist Note</h5>
+                                                           <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                                                               {outfit.motivo}
+                                                           </p>
+                                                       </div>
+                                                   </div>
+                                                   
+                                                   <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                                       <div className="relative flex-1 mr-4">
+                                                           <input 
+                                                               type="text" 
+                                                               placeholder="Adicione uma nota pessoal..." 
+                                                               className="w-full text-xs bg-transparent border-none focus:ring-0 text-slate-600 dark:text-slate-400 placeholder:text-slate-300 px-0"
+                                                               value={outfit.userNote || ''}
+                                                               onChange={(e) => updateOutfitNote(originalIndex, e.target.value)}
+                                                           />
+                                                           <Edit3 className="w-3 h-3 text-slate-300 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                                       </div>
+                                                       
+                                                       {/* Feedback Actions */}
+                                                       <div className="flex items-center gap-2">
+                                                           <button 
+                                                               onClick={() => handleOutfitFeedback(originalIndex, 'like')}
+                                                               className={`p-2 rounded-full transition-colors ${outfit.feedback === 'like' ? 'bg-green-100 text-green-600 dark:bg-green-900/30' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                           >
+                                                               <ThumbsUp className="w-4 h-4" />
+                                                           </button>
+                                                           <button 
+                                                               onClick={() => handleOutfitFeedback(originalIndex, 'dislike')}
+                                                               className={`p-2 rounded-full transition-colors ${outfit.feedback === 'dislike' ? 'bg-red-100 text-red-600 dark:bg-red-900/30' : 'text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                                                           >
+                                                               <ThumbsDown className="w-4 h-4" />
+                                                           </button>
+                                                       </div>
+                                                   </div>
+                                               </div>
+                                           </div>
+                                       </div>
+                                   </div>
+                                   );
+                               })}
+                           </div>
+                       </div>
+                   </div>
+               </div>
+            )}
         </div>
       )}
 
