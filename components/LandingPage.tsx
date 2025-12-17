@@ -91,7 +91,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
         {/* SEÇÃO: O PROBLEMA */}
         <section className="py-24 bg-brand-bg">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="grid lg:grid-cols-2 gap-16 items-center">
+                <div className="grid lg:grid-cols-2 gap-16 items-center">
                     <div className="relative order-2 lg:order-1">
                         <img src="https://images.unsplash.com/photo-1595341888016-a392ef81b7de?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80" alt="Dúvida com roupas" className="rounded shadow-lg grayscale hover:grayscale-0 transition-all duration-500"/>
                         <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-brand-graphite flex items-center justify-center">
@@ -110,11 +110,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
                             </li>
                             <li className="flex items-start gap-4">
                                 <div className="mt-1 w-6 h-6 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0"><i className="ph-bold ph-x text-red-400 text-xs"></i></div>
-                                <div><h4 class="font-semibold text-brand-graphite">Looks que não comunicam quem você é</h4><p className="text-sm text-slate-500">Sentir que a roupa "chegou antes" de você no ambiente.</p></div>
+                                <div><h4 className="font-semibold text-brand-graphite">Looks que não comunicam quem você é</h4><p className="text-sm text-slate-500">Sentir que a roupa "chegou antes" de você no ambiente.</p></div>
                             </li>
                             <li className="flex items-start gap-4">
                                 <div className="mt-1 w-6 h-6 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0"><i className="ph-bold ph-x text-red-400 text-xs"></i></div>
-                                <div><h4 class="font-semibold text-brand-graphite">Dúvida constante</h4><p class="text-sm text-slate-500">O guarda-roupa cheio, mas a sensação de "não tenho nada para vestir".</p></div>
+                                <div><h4 className="font-semibold text-brand-graphite">Dúvida constante</h4><p className="text-sm text-slate-500">O guarda-roupa cheio, mas a sensação de "não tenho nada para vestir".</p></div>
                             </li>
                         </ul>
                         <div className="flex items-center gap-4 p-4 bg-white border border-brand-gold/20 rounded shadow-sm">
@@ -223,14 +223,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-16">
                     <h2 className="font-serif text-4xl text-brand-graphite mb-4">Escolha sua transformação</h2>
-                    <p className="text-slate-500">Comece grátis, compre pacotes quando precisar.</p>
+                    <p className="text-slate-500">Comece grátis, evolua quando quiser.</p>
                 </div>
                 <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                     {/* Free Plan */}
                     <div className="border border-slate-200 rounded-xl p-8 hover:border-slate-300 transition-colors bg-brand-bg">
                         <h3 className="font-serif text-2xl font-bold text-brand-graphite">Visitante</h3>
                         <p className="text-4xl font-bold text-slate-300 mt-4 mb-2">R$0</p>
-                        <p className="text-xs text-slate-500 mb-8">Experimente sem compromisso</p>
+                        <p className="text-xs text-slate-500 mb-8">Para sempre</p>
                         <ul className="space-y-4 mb-8">
                             <li className="flex items-center gap-3 text-sm text-slate-600"><i className="ph-fill ph-check-circle text-brand-graphite"></i> 1 Análise de coloração básica</li>
                             <li className="flex items-center gap-3 text-sm text-slate-600"><i className="ph-fill ph-check-circle text-brand-graphite"></i> Visualização de 1 Look</li>
@@ -241,19 +241,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
                     {/* Premium Plan */}
                     <div className="border-2 border-brand-gold rounded-xl p-8 bg-white shadow-2xl relative transform md:-translate-y-4">
                         <div className="absolute top-0 right-0 bg-brand-gold text-brand-graphite text-xs font-bold px-3 py-1 rounded-bl rounded-tr-lg">RECOMENDADO</div>
-                        <div className="flex items-center gap-2 mb-1"><h3 className="font-serif text-2xl font-bold text-brand-graphite">Pacote Pro</h3><i className="ph-fill ph-diamond text-brand-gold"></i></div>
+                        <div className="flex items-center gap-2 mb-1"><h3 className="font-serif text-2xl font-bold text-brand-graphite">Premium</h3><i className="ph-fill ph-diamond text-brand-gold"></i></div>
                         <p className="text-4xl font-bold text-brand-graphite mt-4 mb-2">R$29,90</p>
-                        <p className="text-xs text-slate-500 mb-8">Sem assinatura mensal. Recarregue quando quiser.</p>
+                        <p className="text-xs text-slate-500 mb-8">Pagamento único (Acesso Vitalício)</p>
                         <ul className="space-y-4 mb-8">
                             <li className="flex items-center gap-3 text-sm text-brand-graphite font-medium"><i className="ph-fill ph-check-circle text-brand-gold"></i> Análise de Visagismo Completa</li>
                             <li className="flex items-center gap-3 text-sm text-brand-graphite font-medium"><i className="ph-fill ph-check-circle text-brand-gold"></i> Dossiê de Coloração Pessoal</li>
-                            <li className="flex items-center gap-3 text-sm text-brand-graphite font-medium"><i className="ph-fill ph-check-circle text-brand-gold"></i> <strong>50 Créditos</strong> para gerar Looks</li>
-                            <li className="flex items-center gap-3 text-sm text-brand-graphite font-medium"><i className="ph-fill ph-check-circle text-brand-gold"></i> Exportação em PDF Completo</li>
+                            <li className="flex items-center gap-3 text-sm text-brand-graphite font-medium"><i className="ph-fill ph-check-circle text-brand-gold"></i> Looks Ilimitados na sua foto</li>
+                            <li className="flex items-center gap-3 text-sm text-brand-graphite font-medium"><i className="ph-fill ph-check-circle text-brand-gold"></i> Exportação em PDF</li>
                         </ul>
-                        <div className="space-y-3">
-                            <button onClick={onEnterApp} className="w-full py-3 bg-brand-gold text-brand-graphite rounded hover:bg-brand-goldHover transition-colors font-bold shadow-lg shadow-brand-gold/30">Comprar Pacote</button>
-                            <p className="text-[10px] text-center text-slate-400">Acabaram os créditos? Recargas disponíveis a partir de R$9,90</p>
-                        </div>
+                        <button onClick={onEnterApp} className="w-full py-3 bg-brand-gold text-brand-graphite rounded hover:bg-brand-goldHover transition-colors font-bold shadow-lg shadow-brand-gold/30">Desbloquear Premium</button>
                     </div>
                 </div>
             </div>
@@ -272,7 +269,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
                 </div>
                 <div className="flex items-center gap-3 opacity-70 hover:opacity-100 transition-opacity">
                     <i className="ph ph-credit-card text-2xl text-brand-graphite"></i>
-                    <div><p class="text-xs font-bold text-brand-graphite">PAGAMENTO SEGURO</p><p className="text-[10px] text-slate-500">Processado via Stripe/MercadoPago</p></div>
+                    <div><p className="text-xs font-bold text-brand-graphite">PAGAMENTO SEGURO</p><p className="text-[10px] text-slate-500">Processado via Stripe/MercadoPago</p></div>
                 </div>
             </div>
         </section>

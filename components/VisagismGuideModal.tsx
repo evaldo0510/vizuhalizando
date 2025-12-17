@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Modal } from './Modal';
-import { BookOpen, Scissors, Palette, User, Sparkles, Smile, Glasses, Tag, Info } from 'lucide-react';
+import { BookOpen, Scissors, Palette, User, Sparkles, Smile, Glasses, Tag, Info, Wand2 } from 'lucide-react';
 
 interface VisagismGuideModalProps {
   isOpen: boolean;
@@ -13,7 +13,9 @@ type FaceShapeKey = 'Oval' | 'Redondo' | 'Quadrado' | 'Retangular' | 'Triangular
 interface RecommendationDetail {
     description: string;
     styles: string[];
-    visualGuide: string; // New field for descriptive visual examples
+    visualGuide: string;
+    products?: string[];
+    techniques?: string[];
 }
 
 const FACE_SHAPES: Record<FaceShapeKey, {
@@ -55,34 +57,42 @@ const FACE_SHAPES: Record<FaceShapeKey, {
         hair: {
             description: "A versatilidade é total. O objetivo é manter a harmonia natural sem esconder o contorno.",
             styles: ["Undercut Clássico", "Buzz Cut (Militar)", "Slicked Back", "Quiff Moderno"],
-            visualGuide: "Visual referência: O estilo Slicked Back (penteado para trás) expõe o rosto completamente, destacando a simetria perfeita deste formato."
+            visualGuide: "Visual referência: O estilo Slicked Back (penteado para trás) expõe o rosto completamente.",
+            products: ["Pomada Brilho Médio", "Gel Fixador"],
+            techniques: ["Secagem natural", "Penteado para trás"]
         },
         beard: {
             description: "Opte por linhas que definam o maxilar sem adicionar volume excessivo nas laterais.",
             styles: ["Stubble (Por fazer)", "Barba Boxed (Desenhada)", "Rosto Limpo"],
-            visualGuide: "Visual referência: Barba cerrada e bem desenhada no pescoço, criando uma sombra que define o maxilar."
+            visualGuide: "Visual referência: Barba cerrada e bem desenhada no pescoço.",
+            products: ["Óleo de Barba", "Balm Hidratante"],
+            techniques: ["Desenho com navalha", "Degradê no pescoço"]
         },
         accessories: {
             description: "A maioria das armações funciona. O ideal é que sejam da largura do rosto.",
             styles: ["Aviador", "Wayfarer", "Clubmaster"],
-            visualGuide: "Visual referência: Armações levemente retangulares que contrastam suavemente com as curvas do rosto."
+            visualGuide: "Visual referência: Armações levemente retangulares que contrastam suavemente."
         }
       },
       'Feminino': {
         hair: {
             description: "Liberdade total. Cortes que mostram o rosto são ótimos para valorizar a simetria.",
             styles: ["Long Bob", "Pixie Cut", "Longo em Camadas", "Blunt Cut"],
-            visualGuide: "Visual referência: Cabelo repartido ao meio com ondas suaves ou um corte Pixie moderno expondo o pescoço."
+            visualGuide: "Visual referência: Cabelo repartido ao meio com ondas suaves ou Pixie moderno.",
+            products: ["Mousse de Volume", "Spray de Brilho"],
+            techniques: ["Baby Liss largo", "Escova modelada"]
         },
         makeup: {
-            description: "Foco em realçar, não corrigir. Contorno sutil nas maçãs do rosto ajuda a enfatizar o equilíbrio natural.",
-            styles: ["Make Natural (Glow)", "Delineado Gatinho", "Blush nas maçãs", "Contorno Sutil"],
-            visualGuide: "Visual referência: Pele iluminada no centro e sombreamento leve abaixo das maçãs para esculpir suavemente."
+            description: "Foco em realçar, não corrigir. Contorno sutil nas maçãs do rosto ajuda a enfatizar o equilíbrio.",
+            styles: ["Make Natural (Glow)", "Delineado Gatinho", "Blush nas maçãs"],
+            visualGuide: "Visual referência: Pele iluminada no centro e sombreamento leve.",
+            products: ["Iluminador Líquido", "BB Cream"],
+            techniques: ["Strobing", "Delineado fino"]
         },
         accessories: {
             description: "Divirta-se com tendências. O equilíbrio permite ousadia.",
             styles: ["Argolas", "Óculos Gatinho", "Óculos Oversized"],
-            visualGuide: "Visual referência: Brincos geométricos ou argolas clássicas que acompanham a curvatura do rosto."
+            visualGuide: "Visual referência: Brincos geométricos ou argolas clássicas."
         }
       }
     }
@@ -106,34 +116,42 @@ const FACE_SHAPES: Record<FaceShapeKey, {
         hair: {
             description: "Crie altura e ângulos. Laterais curtas e topo alto alongam a silhueta.",
             styles: ["Pompadour", "Faux Hawk", "High Fade", "Side Part com volume"],
-            visualGuide: "Visual referência: Topete alto estruturado (Pompadour) com laterais em degradê (Fade) bem curto."
+            visualGuide: "Visual referência: Topete alto estruturado (Pompadour) com laterais em degradê.",
+            products: ["Pomada Matte (Alta Fixação)", "Pó Texturizador"],
+            techniques: ["Secador para cima (Volume)", "Topete estruturado"]
         },
         beard: {
             description: "Essencial para criar ângulos. Alongue o queixo e evite volume nas bochechas.",
             styles: ["Cavanhaque Alongado", "Barba em V (Ducktail)", "Van Dyke"],
-            visualGuide: "Visual referência: Barba mais comprida e pontuda no queixo, com as laterais das bochechas raspadas ou baixas."
+            visualGuide: "Visual referência: Barba mais comprida e pontuda no queixo.",
+            products: ["Cera de Bigode", "Balm Modelador"],
+            techniques: ["Aparar laterais baixo", "Deixar queixo longo"]
         },
         accessories: {
             description: "Contraste as curvas com linhas retas e angulares.",
             styles: ["Retangulares", "Quadrados (Wayfarer)", "Hastes grossas"],
-            visualGuide: "Visual referência: Armações quadradas de acetato grosso para criar linhas de força."
+            visualGuide: "Visual referência: Armações quadradas de acetato grosso."
         }
       },
       'Feminino': {
         hair: {
             description: "Busque verticalização. Riscas laterais e volume no topo ajudam a alongar.",
             styles: ["Longo Liso", "Chanel de Bico (Angulado)", "Franja Lateral Longa"],
-            visualGuide: "Visual referência: Long Bob assimétrico (bico frontal) ou cabelo longo liso chapado para criar linhas verticais."
+            visualGuide: "Visual referência: Long Bob assimétrico (bico frontal) ou cabelo longo liso.",
+            products: ["Spray de Raiz (Volume)", "Protetor Térmico (Liso)"],
+            techniques: ["Chapinha (Verticalizar)", "Risca Lateral Profunda"]
         },
         makeup: {
             description: "Técnica de luz e sombra para esculpir ângulos inexistentes.",
             styles: ["Contorno Lateral Forte", "Iluminador no Queixo", "Sobrancelha Arqueada"],
-            visualGuide: "Visual referência: Contorno escuro abaixo das maçãs do rosto em diagonal ascendente para 'afinar' a face."
+            visualGuide: "Visual referência: Contorno escuro abaixo das maçãs em diagonal ascendente.",
+            products: ["Pó de Contorno Escuro", "Iluminador em Pó"],
+            techniques: ["Contorno 3 (Testa/Maçã/Mandíbula)", "Baking"]
         },
         accessories: {
             description: "Evite formas redondas. Busque linhas verticais e pontiagudas.",
             styles: ["Brincos Longos/Lineares", "Óculos Quadrados", "Decotes em V"],
-            visualGuide: "Visual referência: Brincos longos de franja ou corrente que ultrapassem a linha do maxilar."
+            visualGuide: "Visual referência: Brincos longos de franja ou corrente."
         }
       }
     }
@@ -158,34 +176,42 @@ const FACE_SHAPES: Record<FaceShapeKey, {
         hair: {
             description: "Suavize os cantos ou abrace a severidade. Cortes clássicos funcionam bem.",
             styles: ["Crew Cut", "Side Part Clássico", "Texturizado no topo"],
-            visualGuide: "Visual referência: Corte militar baixo (Crew Cut) para destacar a masculinidade ou texturizado para suavizar."
+            visualGuide: "Visual referência: Corte militar baixo (Crew Cut) ou texturizado.",
+            products: ["Cera Efeito Natural", "Spray de Sal"],
+            techniques: ["Texturização com dedos", "Corte a tesoura"]
         },
         beard: {
             description: "Arredonde levemente a região do queixo para suavizar a imagem de autoridade.",
             styles: ["Barba Circular", "Barba Real (Queixo+Bigode)", "Stubble Média"],
-            visualGuide: "Visual referência: Barba 'por fazer' que cobre a angulação óssea sem esconder a estrutura forte."
+            visualGuide: "Visual referência: Barba 'por fazer' que cobre a angulação óssea.",
+            products: ["Óleo Nutritivo", "Pente de Madeira"],
+            techniques: ["Manter pescoço limpo", "Arredondar cantos"]
         },
         accessories: {
             description: "Óculos redondos suavizam. Óculos quadrados reforçam a autoridade.",
             styles: ["Redondos (John Lennon)", "Ovais", "Aviador"],
-            visualGuide: "Visual referência: Óculos de metal fino redondos para intelectualizar e suavizar a força do rosto."
+            visualGuide: "Visual referência: Óculos de metal fino redondos."
         }
       },
       'Feminino': {
         hair: {
             description: "Ondas e camadas suavizam a linha rígida do maxilar.",
             styles: ["Ondas de Praia (Waves)", "Shag Hair", "Franja Cortina (Curtain Bangs)"],
-            visualGuide: "Visual referência: Cabelo solto com ondas largas (Baby Liss) começando abaixo da orelha."
+            visualGuide: "Visual referência: Cabelo solto com ondas largas (Baby Liss).",
+            products: ["Mousse Ativador de Cachos", "Spray de Textura"],
+            techniques: ["Ondas largas", "Repicado nas pontas"]
         },
         makeup: {
             description: "Suavize o maxilar. Foque a atenção no centro do rosto e olhos.",
             styles: ["Blush Arredondado", "Olhos Esfumados", "Batom Nude"],
-            visualGuide: "Visual referência: Blush aplicado em movimentos circulares nas maçãs para quebrar as linhas retas."
+            visualGuide: "Visual referência: Blush aplicado em movimentos circulares nas maçãs.",
+            products: ["Blush Cremoso", "Sombra Esfumada"],
+            techniques: ["Esfumado circular", "Iluminação central"]
         },
         accessories: {
             description: "Formas orgânicas e arredondadas quebram a rigidez.",
             styles: ["Argolas Grandes", "Colares Curvos", "Óculos Redondos/Ovais"],
-            visualGuide: "Visual referência: Brincos de argola dourados médios ou colares de pérolas."
+            visualGuide: "Visual referência: Brincos de argola dourados médios."
         }
       }
     }
@@ -210,35 +236,43 @@ const FACE_SHAPES: Record<FaceShapeKey, {
       'Masculino': {
         hair: {
             description: "Evite laterais muito raspadas. O volume lateral equilibra o comprimento.",
-            styles: ["Corte Tesoura Clássico", "Franja Lateral", "Buzz Cut (se quiser destacar)"],
-            visualGuide: "Visual referência: Corte clássico de tesoura, com laterais mais cheias e franja penteada para o lado."
+            styles: ["Corte Tesoura Clássico", "Franja Lateral", "Buzz Cut"],
+            visualGuide: "Visual referência: Corte clássico de tesoura, com laterais mais cheias.",
+            products: ["Pomada Cremosa", "Spray Fixador Leve"],
+            techniques: ["Evitar topete alto", "Pentear para o lado"]
         },
         beard: {
             description: "Preencha as laterais e mantenha o queixo curto para não alongar mais.",
             styles: ["Barba Cheia (Full Beard)", "Mutton Chops Suave", "Bigode Forte"],
-            visualGuide: "Visual referência: Barba cheia nas bochechas e curta no queixo para criar largura horizontal."
+            visualGuide: "Visual referência: Barba cheia nas bochechas e curta no queixo.",
+            products: ["Balm de Volume", "Escova de Barba"],
+            techniques: ["Volume nas bochechas", "Queixo aparado curto"]
         },
         accessories: {
             description: "Óculos grandes que quebram a extensão vertical do rosto.",
             styles: ["Aviador Grande", "Wayfarer Oversized", "Hastes decoradas"],
-            visualGuide: "Visual referência: Óculos estilo Aviador Oversized que cobrem uma boa porção vertical do rosto."
+            visualGuide: "Visual referência: Óculos estilo Aviador Oversized."
         }
       },
       'Feminino': {
         hair: {
             description: "Volume lateral é o segredo. Franjas ajudam a diminuir a testa.",
             styles: ["Cachos Volumosos", "Franja Reta", "Corte em Camadas Médio"],
-            visualGuide: "Visual referência: Franja reta na altura da sobrancelha combinada com corte em camadas volumoso."
+            visualGuide: "Visual referência: Franja reta na altura da sobrancelha.",
+            products: ["Mousse de Volume", "Spray de Sal"],
+            techniques: ["Secagem com difusor", "Escova para fora"]
         },
         makeup: {
             description: "Contorno na raiz do cabelo e ponta do queixo para 'encurtar' o rosto.",
             styles: ["Blush Horizontal", "Contorno Testa/Queixo", "Olhos Marcados"],
-            visualGuide: "Visual referência: Aplicação de bronzer no topo da testa (rente à raiz) e na ponta do queixo."
+            visualGuide: "Visual referência: Aplicação de bronzer no topo da testa e ponta do queixo.",
+            products: ["Bronzer Matte", "Delineador"],
+            techniques: ["Contorno horizontal", "Blush transversal"]
         },
         accessories: {
             description: "Peças largas e curtas. Evite brincos longos que toquem o ombro.",
             styles: ["Brincos Botão Grandes", "Gargantilhas (Chokers)", "Óculos Largos"],
-            visualGuide: "Visual referência: Colares estilo Gargantilha (Choker) para 'cortar' a linha vertical do pescoço."
+            visualGuide: "Visual referência: Colares estilo Gargantilha (Choker)."
         }
       }
     }
@@ -263,34 +297,42 @@ const FACE_SHAPES: Record<FaceShapeKey, {
         hair: {
             description: "Adicione volume nas laterais superiores e topo para equilibrar a base larga.",
             styles: ["Topete Volumoso", "Messy Hair (Bagunçado)", "Franja Longa"],
-            visualGuide: "Visual referência: Cabelo texturizado 'bagunçado' com volume concentrado nas têmporas e topo."
+            visualGuide: "Visual referência: Cabelo texturizado 'bagunçado' com volume no topo.",
+            products: ["Pó de Volume", "Cera Matte"],
+            techniques: ["Secar raízes para cima", "Texturização"]
         },
         beard: {
             description: "Evite volume nas laterais do maxilar. Mantenha limpo ou muito curto.",
             styles: ["Rosto Limpo", "Bigode + Soul Patch", "Barba Desenhada Fina"],
-            visualGuide: "Visual referência: Rosto limpo (Clean Shaven) ou apenas um bigode destacado para chamar atenção para o centro."
+            visualGuide: "Visual referência: Rosto limpo (Clean Shaven) ou bigode.",
+            products: ["Gel de Barbear Transparente", "Pós-Barba"],
+            techniques: ["Raspar laterais", "Destacar bigode"]
         },
         accessories: {
             description: "Destaque a parte superior do rosto para tirar o foco do maxilar.",
             styles: ["Browline (Clubmaster)", "Aviador", "Óculos Meio-Aro"],
-            visualGuide: "Visual referência: Óculos Clubmaster (aro superior grosso) que enfatizam a linha da sobrancelha."
+            visualGuide: "Visual referência: Óculos Clubmaster (aro superior grosso)."
         }
       },
       'Feminino': {
         hair: {
             description: "Volume no topo e nas têmporas. Evite cortes retos na altura do queixo.",
             styles: ["Coque Alto Bagunçado", "Pixie com Volume", "Camadas Superiores"],
-            visualGuide: "Visual referência: Coque alto despojado (Messy Bun) para atrair o olhar para o topo da cabeça."
+            visualGuide: "Visual referência: Coque alto despojado (Messy Bun).",
+            products: ["Spray de Fixação", "Shampoo Seco (Volume)"],
+            techniques: ["Desfiar raiz", "Coque alto"]
         },
         makeup: {
             description: "Ilumine a testa e o centro. Escureça levemente as laterais do maxilar.",
             styles: ["Iluminador Têmporas", "Olhos Gatinho", "Batom Suave"],
-            visualGuide: "Visual referência: Olhos bem marcados com delineador e iluminador nas têmporas para alargar a parte superior."
+            visualGuide: "Visual referência: Olhos bem marcados e iluminador nas têmporas.",
+            products: ["Iluminador Potente", "Sombra Cintilante"],
+            techniques: ["Foco nos olhos", "Lábios neutros"]
         },
         accessories: {
             description: "Traga o peso visual para cima (orelhas e pescoço).",
             styles: ["Brincos Pequenos/Médios", "Colares Curtos", "Óculos Gatinho"],
-            visualGuide: "Visual referência: Brincos pequenos brilhantes ou colares curtos que repousem na clavícula."
+            visualGuide: "Visual referência: Brincos pequenos brilhantes."
         }
       }
     }
@@ -315,34 +357,42 @@ const FACE_SHAPES: Record<FaceShapeKey, {
         hair: {
             description: "Sua testa já é larga, evite volume excessivo nas laterais superiores.",
             styles: ["Franja Caída", "Corte César", "Texturizado Baixo"],
-            visualGuide: "Visual referência: Franja desfiada caindo sobre a testa para reduzir a percepção de largura."
+            visualGuide: "Visual referência: Franja desfiada caindo sobre a testa.",
+            products: ["Pasta Modeladora", "Spray Leve"],
+            techniques: ["Franja para frente", "Laterais baixas"]
         },
         beard: {
             description: "A melhor amiga deste formato. Use a barba para criar volume no queixo.",
             styles: ["Barba Cheia (Full Beard)", "Garibaldi", "Barba Lenhador"],
-            visualGuide: "Visual referência: Barba cheia e arredondada na base para adicionar peso visual ao queixo fino."
+            visualGuide: "Visual referência: Barba cheia e arredondada na base.",
+            products: ["Balm de Crescimento", "Escova Redonda"],
+            techniques: ["Deixar crescer volume baixo", "Arredondar base"]
         },
         accessories: {
             description: "Evite armações muito largas que ultrapassem as têmporas.",
             styles: ["Óculos Redondos", "Óculos sem aro", "Armações leves"],
-            visualGuide: "Visual referência: Óculos de metal fino e aro arredondado que não ultrapassam a largura do rosto."
+            visualGuide: "Visual referência: Óculos de metal fino."
         }
       },
       'Feminino': {
         hair: {
             description: "Adicione volume na altura do queixo para equilibrar a testa.",
             styles: ["Chanel Clássico", "Longo com Ondas nas pontas", "Side Swept"],
-            visualGuide: "Visual referência: Corte Chanel na altura do queixo com pontas volumosas viradas para dentro."
+            visualGuide: "Visual referência: Corte Chanel na altura do queixo.",
+            products: ["Leave-in Encorpador", "Óleo de Pontas"],
+            techniques: ["Escova virada para dentro", "Ondas nas pontas"]
         },
         makeup: {
             description: "Suavize a testa com contorno. Ilumine a lateral do maxilar.",
-            styles: ["Contorno Têmporas", "Batom Vibrante (destaque boca)", "Sobrancelha Natural"],
-            visualGuide: "Visual referência: Batom em tom vibrante (vermelho ou vinho) para ancorar o olhar na parte inferior."
+            styles: ["Contorno Têmporas", "Batom Vibrante", "Sobrancelha Natural"],
+            visualGuide: "Visual referência: Batom em tom vibrante para ancorar o olhar.",
+            products: ["Batom Vermelho/Vinho", "Bronzer"],
+            techniques: ["Contorno de testa", "Boca destaque"]
         },
         accessories: {
             description: "Brincos com base larga (formato gota ou triângulo) funcionam perfeitamente.",
             styles: ["Brincos Gota", "Colares Longos", "Óculos Aviador"],
-            visualGuide: "Visual referência: Brincos em formato de gota ou pêndulo com base larga."
+            visualGuide: "Visual referência: Brincos em formato de gota ou pêndulo."
         }
       }
     }
@@ -371,34 +421,42 @@ const FACE_SHAPES: Record<FaceShapeKey, {
         hair: {
             description: "Evite laterais muito curtas que destaquem as orelhas/maçãs.",
             styles: ["Faux Hawk", "Texturizado com Franja", "Longo Masculino"],
-            visualGuide: "Visual referência: Cabelo com textura no topo e franja desconectada, evitando raspagem total nas laterais."
+            visualGuide: "Visual referência: Cabelo com textura no topo e franja desconectada.",
+            products: ["Cera Modeladora", "Leave-in"],
+            techniques: ["Camadas desconectadas", "Franja lateral"]
         },
         beard: {
             description: "Preencha o queixo para tirar a aparência 'pontuda'.",
             styles: ["Barba Cerrada", "Goatee Largo", "Barba Quadrada"],
-            visualGuide: "Visual referência: Barba cerrada (Stubble) uniforme em todo o rosto para suavizar a angulação das maçãs."
+            visualGuide: "Visual referência: Barba cerrada (Stubble) uniforme.",
+            products: ["Máquina de acabamento", "Óleo Hidratante"],
+            techniques: ["Manter comprimento uniforme", "Quadrar o queixo"]
         },
         accessories: {
             description: "Óculos que contrastem com as maçãs angulosas.",
             styles: ["Ovais", "Aviador Curvo", "Hastes detalhadas"],
-            visualGuide: "Visual referência: Óculos ovais ou aviadores com curvas suaves para contrapor os ângulos agudos."
+            visualGuide: "Visual referência: Óculos ovais ou aviadores curvos."
         }
       },
       'Feminino': {
         hair: {
             description: "Mostre essas maçãs! Ou use franjas laterais para suavizar.",
             styles: ["Rabo de Cavalo Alto", "Wolf Cut", "Franja Lateral"],
-            visualGuide: "Visual referência: Rabo de cavalo alto e puxado (Sleek Ponytail) destacando a estrutura óssea dramática."
+            visualGuide: "Visual referência: Rabo de cavalo alto e puxado (Sleek Ponytail).",
+            products: ["Gel Efeito Molhado", "Spray de Fixação Forte"],
+            techniques: ["Sleek Hair", "Franja desfiada"]
         },
         makeup: {
             description: "Ilumine o centro da testa e queixo. Suavize a ponta das maçãs.",
             styles: ["Iluminador Central", "Blush Suave", "Olhos Esfumados"],
-            visualGuide: "Visual referência: Iluminador aplicado no 'C' ao redor dos olhos e têmporas, evitando contorno escuro nas maçãs."
+            visualGuide: "Visual referência: Iluminador aplicado no 'C' ao redor dos olhos.",
+            products: ["Iluminador Cremoso", "Blush Pêssego"],
+            techniques: ["Iluminação central", "Blush nas têmporas"]
         },
         accessories: {
             description: "Argolas são excelentes para suavizar os ângulos laterais.",
             styles: ["Argolas Médias", "Brincos Ovais", "Óculos Borboleta"],
-            visualGuide: "Visual referência: Argolas médias douradas ou prateadas que adicionam curvatura às laterais do rosto."
+            visualGuide: "Visual referência: Argolas médias douradas ou prateadas."
         }
       }
     }
@@ -423,34 +481,42 @@ const FACE_SHAPES: Record<FaceShapeKey, {
            hair: { 
              description: "Cortes que suavizem a testa larga. Volume médio.", 
              styles: ["Franja Texturizada", "Medium Length Push Back"],
-             visualGuide: "Visual referência: Cabelo penteado para trás mas com volume e textura natural, sem estar colado na cabeça." 
+             visualGuide: "Visual referência: Cabelo penteado para trás com volume natural.",
+             products: ["Cera de Baixo Brilho", "Spray de Sal"],
+             techniques: ["Secagem natural", "Texturização leve"]
            },
            beard: { 
              description: "Adicione peso ao queixo para equilibrar a testa.", 
              styles: ["Barba Cheia", "Extended Goatee", "Barba Lenhador"],
-             visualGuide: "Visual referência: Cavanhaque estendido (Extended Goatee) que conecta bigode e queixo, alargando a parte inferior." 
+             visualGuide: "Visual referência: Cavanhaque estendido (Extended Goatee).",
+             products: ["Balm de Volume", "Pente Largo"],
+             techniques: ["Volume no queixo", "Laterais aparadas"]
            },
            accessories: { 
              description: "Armações leves e arredondadas na parte inferior.", 
              styles: ["Clubmaster", "Redondos", "Meio-Aro"],
-             visualGuide: "Visual referência: Óculos com aro inferior invisível ou muito fino para não pesar no rosto delicado." 
+             visualGuide: "Visual referência: Óculos com aro inferior invisível."
            }
         },
         'Feminino': {
            hair: { 
              description: "Longo com camadas começando no queixo. Franja cortina.", 
              styles: ["Camadas Longas", "Side Swept Bangs", "Lob"],
-             visualGuide: "Visual referência: Franja 'cortina' (Curtain Bangs) dividida ao meio, suavizando a testa e as têmporas." 
+             visualGuide: "Visual referência: Franja 'cortina' (Curtain Bangs) dividida ao meio.",
+             products: ["Sérum Reparador", "Spray de Brilho"],
+             techniques: ["Baby Liss solto", "Franja modelada"]
            },
            makeup: { 
              description: "Foco nos olhos, mas sem alargar. Batons suaves ou gloss.", 
              styles: ["Foco nos Cílios", "Batom Nude/Rosado", "Contorno Testa"],
-             visualGuide: "Visual referência: Muita máscara de cílios e batom Gloss rosado, mantendo a aparência fresca e romântica." 
+             visualGuide: "Visual referência: Muita máscara de cílios e batom Gloss.",
+             products: ["Máscara de Cílios", "Gloss Labial"],
+             techniques: ["Cílios volumosos", "Pele Glow"]
            },
            accessories: { 
              description: "Brincos pendentes com volume na base.", 
              styles: ["Brincos Chandelier", "Óculos sem aro", "Colares em camadas"],
-             visualGuide: "Visual referência: Brincos estilo candelabro (Chandelier) que são largos na parte de baixo." 
+             visualGuide: "Visual referência: Brincos estilo candelabro (Chandelier)."
            }
         }
      }
@@ -606,7 +672,7 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                 <div className="mt-1 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg h-fit">
                                     <Scissors className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 flex-1">
                                     <h5 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Cabelo</h5>
                                     <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
                                         {FACE_SHAPES[selectedShape].recommendations.Masculino.hair.description}
@@ -624,6 +690,23 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                             </span>
                                         ))}
                                     </div>
+                                    {/* Products & Techniques */}
+                                    {(FACE_SHAPES[selectedShape].recommendations.Masculino.hair.products || FACE_SHAPES[selectedShape].recommendations.Masculino.hair.techniques) && (
+                                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                            <div className="bg-blue-50 dark:bg-blue-900/10 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-blue-600 uppercase mb-1 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Produtos</p>
+                                                <ul className="text-[10px] text-slate-600 dark:text-slate-400 list-disc list-inside">
+                                                    {FACE_SHAPES[selectedShape].recommendations.Masculino.hair.products?.map(p => <li key={p}>{p}</li>)}
+                                                </ul>
+                                            </div>
+                                            <div className="bg-indigo-50 dark:bg-indigo-900/10 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-indigo-600 uppercase mb-1 flex items-center gap-1"><Wand2 className="w-3 h-3"/> Técnicas</p>
+                                                <ul className="text-[10px] text-slate-600 dark:text-slate-400 list-disc list-inside">
+                                                    {FACE_SHAPES[selectedShape].recommendations.Masculino.hair.techniques?.map(t => <li key={t}>{t}</li>)}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -632,7 +715,7 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                 <div className="mt-1 p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg h-fit">
                                     <Smile className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 flex-1">
                                     <h5 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Barba</h5>
                                     <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
                                         {FACE_SHAPES[selectedShape].recommendations.Masculino.beard.description}
@@ -650,6 +733,19 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                             </span>
                                         ))}
                                     </div>
+                                    {/* Products & Techniques */}
+                                    {(FACE_SHAPES[selectedShape].recommendations.Masculino.beard.products || FACE_SHAPES[selectedShape].recommendations.Masculino.beard.techniques) && (
+                                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                            <div className="bg-slate-100 dark:bg-slate-700/30 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Produtos</p>
+                                                <p className="text-[10px] text-slate-600 dark:text-slate-400">{FACE_SHAPES[selectedShape].recommendations.Masculino.beard.products?.join(', ')}</p>
+                                            </div>
+                                            <div className="bg-slate-100 dark:bg-slate-700/30 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Manutenção</p>
+                                                <p className="text-[10px] text-slate-600 dark:text-slate-400">{FACE_SHAPES[selectedShape].recommendations.Masculino.beard.techniques?.join(', ')}</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -692,7 +788,7 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                 <div className="mt-1 p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg h-fit">
                                     <Scissors className="w-5 h-5 text-pink-600 dark:text-pink-400" />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 flex-1">
                                     <h5 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Cabelo</h5>
                                     <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
                                         {FACE_SHAPES[selectedShape].recommendations.Feminino.hair.description}
@@ -710,6 +806,23 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                             </span>
                                         ))}
                                     </div>
+                                    {/* Products & Techniques */}
+                                    {(FACE_SHAPES[selectedShape].recommendations.Feminino.hair.products || FACE_SHAPES[selectedShape].recommendations.Feminino.hair.techniques) && (
+                                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                            <div className="bg-pink-50 dark:bg-pink-900/10 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-pink-600 uppercase mb-1 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Produtos</p>
+                                                <ul className="text-[10px] text-slate-600 dark:text-slate-400 list-disc list-inside">
+                                                    {FACE_SHAPES[selectedShape].recommendations.Feminino.hair.products?.map(p => <li key={p}>{p}</li>)}
+                                                </ul>
+                                            </div>
+                                            <div className="bg-indigo-50 dark:bg-indigo-900/10 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-indigo-600 uppercase mb-1 flex items-center gap-1"><Wand2 className="w-3 h-3"/> Técnicas</p>
+                                                <ul className="text-[10px] text-slate-600 dark:text-slate-400 list-disc list-inside">
+                                                    {FACE_SHAPES[selectedShape].recommendations.Feminino.hair.techniques?.map(t => <li key={t}>{t}</li>)}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -718,7 +831,7 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                 <div className="mt-1 p-2 bg-pink-100 dark:bg-pink-900/30 rounded-lg h-fit">
                                     <Palette className="w-5 h-5 text-pink-600 dark:text-pink-400" />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 flex-1">
                                     <h5 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Maquiagem</h5>
                                     <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
                                         {FACE_SHAPES[selectedShape].recommendations.Feminino.makeup.description}
@@ -736,6 +849,19 @@ export const VisagismGuideModal: React.FC<VisagismGuideModalProps> = ({ isOpen, 
                                             </span>
                                         ))}
                                     </div>
+                                    {/* Products & Techniques */}
+                                    {(FACE_SHAPES[selectedShape].recommendations.Feminino.makeup.products || FACE_SHAPES[selectedShape].recommendations.Feminino.makeup.techniques) && (
+                                        <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+                                            <div className="bg-slate-100 dark:bg-slate-700/30 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Essenciais</p>
+                                                <p className="text-[10px] text-slate-600 dark:text-slate-400">{FACE_SHAPES[selectedShape].recommendations.Feminino.makeup.products?.join(', ')}</p>
+                                            </div>
+                                            <div className="bg-slate-100 dark:bg-slate-700/30 p-2 rounded">
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Dica Pro</p>
+                                                <p className="text-[10px] text-slate-600 dark:text-slate-400">{FACE_SHAPES[selectedShape].recommendations.Feminino.makeup.techniques?.join(', ')}</p>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

@@ -1,17 +1,15 @@
+
 import React, { useState } from 'react';
 import { X, Mail, Lock, Loader2, ArrowRight, LogIn, Chrome, User, Briefcase, ShoppingBag, Smile } from 'lucide-react';
 import { 
   getAuth, 
   signInWithPopup, 
   GoogleAuthProvider, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  updateProfile,
   User as FirebaseUser
 } from 'firebase/auth';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { UserRole } from '../types';
+import { db } from '../services/database';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -39,29 +37,6 @@ const getFirebaseApp = (): FirebaseApp | null => {
     return null;
 };
 
-// --- DATABASE USER SYNC ---
-const saveUserToFirestore = async (user: FirebaseUser, role: UserRole, additionalData?: any) => {
-    const app = getFirebaseApp();
-    if (!app) return;
-    
-    try {
-        const db = getFirestore(app);
-        const userRef = doc(db, "users", user.uid);
-        
-        await setDoc(userRef, {
-            uid: user.uid,
-            email: user.email,
-            displayName: user.displayName || additionalData?.name || 'Usuário',
-            photoURL: user.photoURL,
-            lastLogin: serverTimestamp(),
-            createdAt: additionalData?.isNew ? serverTimestamp() : undefined,
-            role: role
-        }, { merge: true });
-    } catch (e) {
-        console.error("Error saving user to DB:", e);
-    }
-};
-
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [name, setName] = useState('');
@@ -79,19 +54,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
     try {
       const app = getFirebaseApp();
       if (!app) {
-          if (onMockLogin) {
-              // Mock Google Login
-              onMockLogin({
-                  uid: 'mock-google-user-' + Date.now(),
-                  email: 'demo@gmail.com',
-                  displayName: 'Usuário Demo (Google)',
-                  isAnonymous: false,
-                  photoURL: null
-              }, selectedRole);
-              onClose();
-              return;
-          }
-          throw new Error("Serviço de autenticação indisponível (Configuração ausente).");
+          throw new Error("Login com Google indisponível offline. Use Email/Senha.");
       }
       const auth = getAuth(app);
       const provider = new GoogleAuthProvider();
@@ -100,17 +63,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
       }
 
       const result = await signInWithPopup(auth, provider);
-      // Save to DB
-      await saveUserToFirestore(result.user, selectedRole);
+      
+      // Sync with local DB logic if needed, or just pass through
+      if (onMockLogin) {
+          onMockLogin({
+              uid: result.user.uid,
+              email: result.user.email,
+              displayName: result.user.displayName,
+              photoURL: result.user.photoURL
+          }, selectedRole);
+      }
       
       onClose();
     } catch (err: any) {
       console.error("Google Auth Error:", err);
-      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-        console.log("Login canceled by user");
-      } else {
-        setError(err.message || "Erro ao conectar com Google.");
-      }
+      setError(err.message || "Erro ao conectar com Google.");
     } finally {
       setLoading(false);
     }
@@ -127,57 +94,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
     setError(null);
     
     try {
-      const app = getFirebaseApp();
-      
-      // FALLBACK: MOCK LOGIN (If Firebase is missing)
-      if (!app) {
-          if (onMockLogin) {
-              console.log("Using Mock Login for:", email);
-              setTimeout(() => {
-                onMockLogin({
-                    uid: 'mock-user-' + Date.now(),
-                    email: email,
-                    displayName: name || email.split('@')[0],
-                    isAnonymous: false,
-                    emailVerified: true
-                }, selectedRole);
-                onClose();
-              }, 800);
-              return;
-          }
-          throw new Error("Serviço de autenticação indisponível (Configuração ausente).");
+      // Use Local DB Service
+      let user;
+      if (isRegistering) {
+          user = await db.registerUser(name, email, password, selectedRole);
+      } else {
+          user = await db.loginUser(email, password);
       }
 
-      // REAL LOGIN (If Firebase exists)
-      const auth = getAuth(app);
-      
-      let userCredential;
-      if (isRegistering) {
-        userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        await updateProfile(userCredential.user, {
-            displayName: name
-        });
-        await saveUserToFirestore(userCredential.user, selectedRole, { isNew: true, name });
-      } else {
-        userCredential = await signInWithEmailAndPassword(auth, email, password);
-        // Note: In real app, we would fetch the role from DB here.
-        // For simplicity, we update/ensure role on login or just rely on what's in DB.
-        await saveUserToFirestore(userCredential.user, selectedRole);
+      // Convert DB user to App User format
+      const appUser = {
+          uid: user.id.toString(),
+          email: user.email,
+          displayName: user.nome,
+          photoURL: user.foto_perfil || null,
+          role: user.nivel_acesso // 'admin' | 'user'
+      };
+
+      if (onMockLogin) {
+          onMockLogin(appUser, selectedRole);
       }
       onClose();
+
     } catch (err: any) {
-      console.error("Email Auth Error:", err);
-      if (err.code === 'auth/email-already-in-use') {
-        setError("Este email já está em uso.");
-      } else if (err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        setError("Email ou senha incorretos.");
-      } else if (err.code === 'auth/weak-password') {
-        setError("A senha deve ter pelo menos 6 caracteres.");
-      } else {
-        setError(err.message || "Ocorreu um erro. Tente novamente mais tarde.");
-      }
+      console.error("Auth Error:", err);
+      setError(err.message || "Ocorreu um erro. Verifique suas credenciais.");
     } finally {
-      if (getFirebaseApp()) setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -185,12 +128,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
     <div className="fixed inset-0 z-[500] flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity animate-fade-in" 
+        className="absolute inset-0 bg-brand-graphite/60 backdrop-blur-sm transition-opacity animate-fade-in" 
         onClick={onClose}
       />
       
       {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/40 dark:border-white/10 animate-fade-in transform transition-all scale-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
+      <div className="relative w-full max-w-md bg-white/95 dark:bg-brand-graphite/95 backdrop-blur-xl rounded-3xl shadow-2xl overflow-hidden border border-white/40 dark:border-white/10 animate-fade-in transform transition-all scale-100 max-h-[90vh] overflow-y-auto custom-scrollbar">
         
         {/* Header */}
         <div className="p-8 pb-0 text-center relative">
@@ -200,10 +143,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
             >
                 <X className="w-5 h-5" />
             </button>
-            <div className="inline-flex items-center justify-center p-3 bg-indigo-50 dark:bg-indigo-900/30 rounded-full mb-4 text-indigo-600 dark:text-indigo-400">
+            <div className="inline-flex items-center justify-center p-3 bg-brand-gold/10 dark:bg-brand-gold/20 rounded-full mb-4 text-brand-gold">
                 <LogIn className="w-6 h-6" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+            <h2 className="text-2xl font-bold text-brand-graphite dark:text-white mb-2 font-serif">
                 {isRegistering ? 'Crie sua conta' : 'Bem-vindo de volta'}
             </h2>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
@@ -218,7 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                     <button 
                         type="button"
                         onClick={() => setSelectedRole('client')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${selectedRole === 'client' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-indigo-300'}`}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${selectedRole === 'client' ? 'border-brand-gold bg-brand-gold/10 text-brand-graphite dark:text-white' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-brand-gold/50'}`}
                     >
                         <Smile className="w-5 h-5 mb-1" />
                         <span className="text-xs font-bold">Cliente</span>
@@ -226,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                     <button 
                         type="button"
                         onClick={() => setSelectedRole('professional')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${selectedRole === 'professional' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-indigo-300'}`}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${selectedRole === 'professional' ? 'border-brand-gold bg-brand-gold/10 text-brand-graphite dark:text-white' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-brand-gold/50'}`}
                     >
                         <Briefcase className="w-5 h-5 mb-1" />
                         <span className="text-xs font-bold">Estilista</span>
@@ -234,7 +177,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                     <button 
                         type="button"
                         onClick={() => setSelectedRole('store')}
-                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${selectedRole === 'store' ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-indigo-300'}`}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all ${selectedRole === 'store' ? 'border-brand-gold bg-brand-gold/10 text-brand-graphite dark:text-white' : 'border-slate-200 dark:border-slate-700 text-slate-500 hover:border-brand-gold/50'}`}
                     >
                         <ShoppingBag className="w-5 h-5 mb-1" />
                         <span className="text-xs font-bold">Loja</span>
@@ -246,9 +189,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
             <button 
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-medium text-slate-700 dark:text-slate-200 mb-6 group"
+                className="w-full flex items-center justify-center gap-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-medium text-brand-graphite dark:text-slate-200 mb-6 group"
             >
-                 <Chrome className="w-5 h-5 text-slate-900 dark:text-white group-hover:scale-110 transition-transform" />
+                 <Chrome className="w-5 h-5 text-brand-graphite dark:text-white group-hover:scale-110 transition-transform" />
                  <span>{isRegistering ? 'Cadastrar com Google' : 'Entrar com Google'}</span>
             </button>
 
@@ -267,7 +210,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                             placeholder="Seu Nome"
                             value={name} 
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:text-white transition-all placeholder:text-slate-400"
+                            className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-gold focus:outline-none dark:text-white transition-all placeholder:text-slate-400"
                             required
                         />
                     </div>
@@ -280,7 +223,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                         placeholder="seu@email.com"
                         value={email} 
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:text-white transition-all placeholder:text-slate-400"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-gold focus:outline-none dark:text-white transition-all placeholder:text-slate-400"
                         required
                     />
                 </div>
@@ -292,7 +235,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                         placeholder="Sua senha"
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none dark:text-white transition-all placeholder:text-slate-400"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-brand-gold focus:outline-none dark:text-white transition-all placeholder:text-slate-400"
                         required
                     />
                 </div>
@@ -302,7 +245,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                 <button 
                     type="submit" 
                     disabled={loading}
-                    className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full bg-brand-gold hover:bg-yellow-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-brand-gold/30 transition-all flex items-center justify-center gap-2 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isRegistering ? 'Criar Conta' : 'Entrar')}
                     {!loading && <ArrowRight className="w-4 h-4" />}
@@ -314,7 +257,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onMockLog
                     {isRegistering ? 'Já tem uma conta?' : 'Ainda não tem conta?'}
                     <button 
                         onClick={() => setIsRegistering(!isRegistering)}
-                        className="ml-2 font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
+                        className="ml-2 font-bold text-brand-gold hover:underline"
                     >
                         {isRegistering ? 'Fazer Login' : 'Cadastre-se'}
                     </button>
