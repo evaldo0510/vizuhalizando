@@ -40,17 +40,17 @@ export default function App() {
   const [showHistoryView, setShowHistoryView] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
 
-  const loadHistory = useCallback(async (uid: string) => {
-    const userHistory = await db.getUserAnalyses(uid);
-    setHistory(userHistory);
-  }, []);
-
   const checkPremiumStatus = (email: string | null, uid: string) => {
     if (!email) return false;
     const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
     const hasPaid = localStorage.getItem(`premium_${uid}`) === 'true';
     return isAdmin || hasPaid;
   };
+
+  const loadHistory = useCallback(async (uid: string) => {
+    const userHistory = await db.getUserAnalyses(uid);
+    setHistory(userHistory);
+  }, []);
 
   useEffect(() => {
     const fastSession = localStorage.getItem('vizu_session_user');
@@ -183,11 +183,11 @@ export default function App() {
     }
   };
 
-  const handleManualUpgrade = () => {
+  const handleManualUpgrade = async () => {
     if (user) {
-      localStorage.setItem(`premium_${user.uid}`, 'true');
+      await db.forcePremium(user.uid);
       setIsPremium(true);
-      setToast({ msg: "Acesso Premium Ativado!", type: 'success' });
+      setToast({ msg: "Acesso Premium Liberado!", type: 'success' });
       setTimeout(() => setToast(null), 3000);
     } else {
       setShowAuth(true);
@@ -218,7 +218,7 @@ export default function App() {
             <div className="flex items-center gap-3">
               {!isPremium && (
                 <button onClick={handleManualUpgrade} className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-white rounded-full text-[10px] font-bold animate-pulse hover:bg-brand-goldHover transition-all shadow-lg shadow-brand-gold/20">
-                  <CreditCard size={14} /> UPGRADE PREMIUM
+                  <CreditCard size={14} /> ATIVAR ACESSO TOTAL
                 </button>
               )}
               {user?.role === 'admin' && (
@@ -432,6 +432,12 @@ export default function App() {
                     <button onClick={() => { setShowAdmin(true); setShowHistoryView(false); setIsMenuOpen(false); }} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-indigo-600 bg-indigo-50 flex items-center gap-4 transition-all mt-6 border border-indigo-100 group">
                       <div className="p-2 bg-indigo-600 text-white rounded-xl"><ShieldCheck size={20}/></div>
                       Gestão Administrativa
+                    </button>
+                  )}
+                  {!isPremium && (
+                    <button onClick={handleManualUpgrade} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-brand-gold bg-brand-gold/5 flex items-center gap-4 transition-all mt-2 border border-brand-gold/10 group">
+                      <div className="p-2 bg-brand-gold text-white rounded-xl"><Sparkles size={20}/></div>
+                      Liberar Acesso Full
                     </button>
                   )}
                 </nav>

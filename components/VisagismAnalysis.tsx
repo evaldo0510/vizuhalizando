@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, CheckCircle2, Lock, Sparkles, CreditCard, 
   Scissors, Palette, Glasses, Shirt, Info, ArrowRight,
@@ -38,27 +38,45 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
   const [occasionFilter, setOccasionFilter] = useState<OccasionFilter>('Todas');
   const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>('Todas');
   const [styleFilter, setStyleFilter] = useState<string>('Todos');
-  const [localOutfits, setLocalOutfits] = useState<OutfitSuggestion[]>(result.sugestoes_roupa || []);
+  
+  // Garante que sugestoes_roupa seja sempre um array para evitar erros de forEach/map
+  const [localOutfits, setLocalOutfits] = useState<OutfitSuggestion[]>(
+    Array.isArray(result?.sugestoes_roupa) ? result.sugestoes_roupa : []
+  );
+  
   const [generatingLookIdx, setGeneratingLookIdx] = useState<number | null>(null);
+
+  // Sincroniza estado local caso o resultado mude
+  useEffect(() => {
+    if (result?.sugestoes_roupa) {
+      setLocalOutfits(Array.isArray(result.sugestoes_roupa) ? result.sugestoes_roupa : []);
+    }
+  }, [result]);
 
   const availableStyles = useMemo(() => {
     const styles = new Set(['Todos']);
-    localOutfits.forEach(o => { if(o.estilo) styles.add(o.estilo) });
+    if (Array.isArray(localOutfits)) {
+      localOutfits.forEach(o => { 
+        if(o && o.estilo) styles.add(o.estilo);
+      });
+    }
     return Array.from(styles);
   }, [localOutfits]);
 
   const handleFeedbackClick = (idxInOriginal: number, feedback: 'like' | 'dislike') => {
-    if (!onFeedback) return;
-    const currentFeedback = localOutfits[idxInOriginal].feedback;
+    if (!onFeedback || !Array.isArray(localOutfits)) return;
+    const currentFeedback = localOutfits[idxInOriginal]?.feedback;
     const newFeedback = currentFeedback === feedback ? null : feedback;
     const updated = [...localOutfits];
-    updated[idxInOriginal].feedback = newFeedback;
-    setLocalOutfits(updated);
-    onFeedback(idxInOriginal, newFeedback);
+    if (updated[idxInOriginal]) {
+      updated[idxInOriginal].feedback = newFeedback;
+      setLocalOutfits(updated);
+      onFeedback(idxInOriginal, newFeedback);
+    }
   };
 
   const handleVirtualTryOn = async (idx: number, outfit: OutfitSuggestion) => {
-    if (!isPremium || !userImage) return;
+    if (!isPremium || !userImage || !Array.isArray(localOutfits)) return;
     setGeneratingLookIdx(idx);
     try {
       const base64Clean = userImage.split(',')[1] || userImage;
@@ -71,8 +89,10 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
       );
       
       const updated = [...localOutfits];
-      updated[idx].generatedImage = `data:image/png;base64,${generatedBase64}`;
-      setLocalOutfits(updated);
+      if (updated[idx]) {
+        updated[idx].generatedImage = `data:image/png;base64,${generatedBase64}`;
+        setLocalOutfits(updated);
+      }
     } catch (error) {
       console.error("Erro no provador virtual:", error);
     } finally {
@@ -81,7 +101,10 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
   };
 
   const filteredLooks = useMemo(() => {
+    if (!Array.isArray(localOutfits)) return [];
+    
     return localOutfits.filter((look) => {
+      if (!look) return false;
       const matchOccasion = !look.ocasiao || occasionFilter === 'Todas' || 
         look.ocasiao.toLowerCase().includes(occasionFilter.toLowerCase());
       const matchSeason = seasonFilter === 'Todas' || 
@@ -146,7 +169,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
               <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Cromática & Subtom</h3>
             </div>
             <div className="flex flex-wrap gap-3 mb-4">
-              {result.paleta_cores?.map((color, i) => (
+              {Array.isArray(result.paleta_cores) && result.paleta_cores.map((color, i) => (
                 <div key={i} className="group relative">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl border-4 border-white shadow-md transform hover:rotate-6 transition-transform" style={{ backgroundColor: color.hex }} />
                 </div>
@@ -184,7 +207,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                </div>
                
                <div className="px-8 pb-8 space-y-6 flex-1">
-                  {result.visagismo?.cabelo?.produtos && result.visagismo.cabelo.produtos.length > 0 && (
+                  {Array.isArray(result.visagismo?.cabelo?.produtos) && result.visagismo.cabelo.produtos.length > 0 && (
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold text-brand-gold uppercase tracking-[0.2em] flex items-center gap-2">
                         <Tag size={12}/> Produtos Recomendados
@@ -198,7 +221,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                       </div>
                     </div>
                   )}
-                  {result.visagismo?.cabelo?.tecnicas && result.visagismo.cabelo.tecnicas.length > 0 && (
+                  {Array.isArray(result.visagismo?.cabelo?.tecnicas) && result.visagismo.cabelo.tecnicas.length > 0 && (
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold text-brand-graphite uppercase tracking-[0.2em] flex items-center gap-2">
                         <BookOpen size={12}/> Técnicas de Aplicação
@@ -229,7 +252,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                </div>
                
                <div className="px-8 pb-8 space-y-6 flex-1">
-                  {result.visagismo?.barba_ou_make?.produtos && result.visagismo.barba_ou_make.produtos.length > 0 && (
+                  {Array.isArray(result.visagismo?.barba_ou_make?.produtos) && result.visagismo.barba_ou_make.produtos.length > 0 && (
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold text-brand-gold uppercase tracking-[0.2em] flex items-center gap-2">
                         <Tag size={12}/> Essenciais de Beleza
@@ -243,7 +266,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                       </div>
                     </div>
                   )}
-                  {result.visagismo?.barba_ou_make?.tecnicas && result.visagismo.barba_ou_make.tecnicas.length > 0 && (
+                  {Array.isArray(result.visagismo?.barba_ou_make?.tecnicas) && result.visagismo.barba_ou_make.tecnicas.length > 0 && (
                     <div className="space-y-3">
                       <p className="text-[10px] font-bold text-brand-graphite uppercase tracking-[0.2em] flex items-center gap-2">
                         <BookOpen size={12}/> Passo a Passo
@@ -330,7 +353,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
              </div>
            </div>
 
-           {filteredLooks.length > 0 ? (
+           {Array.isArray(filteredLooks) && filteredLooks.length > 0 ? (
              <div className="grid md:grid-cols-2 gap-8">
                {filteredLooks.map((look, idx) => (
                  <div key={idx} className="bg-white rounded-[40px] border border-slate-100 flex flex-col group hover:border-brand-gold/30 transition-all hover:shadow-2xl overflow-hidden shadow-sm">
@@ -341,9 +364,13 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                              <div className="absolute bottom-6 left-6 right-6 p-4 bg-brand-graphite/90 backdrop-blur-md rounded-2xl border border-white/10 flex justify-between items-center">
                                 <span className="text-[10px] text-brand-gold font-bold uppercase tracking-widest">Visualização em você</span>
                                 <button onClick={() => {
-                                   const updated = [...localOutfits];
-                                   updated[look.originalIdx].generatedImage = undefined;
-                                   setLocalOutfits(updated);
+                                   if (Array.isArray(localOutfits)) {
+                                     const updated = [...localOutfits];
+                                     if (updated[look.originalIdx]) {
+                                       updated[look.originalIdx].generatedImage = undefined;
+                                       setLocalOutfits(updated);
+                                     }
+                                   }
                                 }} className="text-white hover:text-brand-gold transition-colors"><Info size={16}/></button>
                              </div>
                           </div>

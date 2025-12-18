@@ -60,6 +60,10 @@ class HybridDatabase {
     return userData;
   }
 
+  async forcePremium(userId: string): Promise<void> {
+    localStorage.setItem(`premium_${userId}`, 'true');
+  }
+
   async saveAnalise(usuario_id: string, foto_url: string, resultado: AnalysisResult): Promise<Analise> {
     const analises = this.getLocalTable<Analise>('analises');
     const newAnalise: Analise = {
@@ -74,9 +78,6 @@ class HybridDatabase {
     return newAnalise;
   }
 
-  /**
-   * Atualiza o feedback de um look específico dentro de uma análise.
-   */
   async updateAnaliseFeedback(analiseId: number, outfitIdx: number, feedback: 'like' | 'dislike' | null): Promise<void> {
     const analises = this.getLocalTable<Analise>('analises');
     const index = analises.findIndex(a => a.id === analiseId);
@@ -90,9 +91,6 @@ class HybridDatabase {
     }
   }
 
-  /**
-   * Gera um resumo textual das preferências do usuário baseado no histórico de feedbacks.
-   */
   async getUserFeedbackSummary(usuario_id: string): Promise<string> {
     const analises = await this.getUserAnalyses(usuario_id);
     const likes: string[] = [];
