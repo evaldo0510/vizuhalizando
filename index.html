@@ -22,18 +22,19 @@
         z-index: 9999; transition: opacity 0.5s ease-out; 
       }
       .spinner { 
-        width: 50px; height: 50px; border: 2px solid rgba(197, 165, 114, 0.1); 
-        border-top: 2px solid #C5A572; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; 
+        width: 60px; height: 60px; border: 3px solid rgba(197, 165, 114, 0.1); 
+        border-top: 3px solid #C5A572; border-radius: 50%; animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; 
       }
       @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       .loading-text { 
         font-family: 'Playfair Display', serif; 
         color: white; 
-        font-size: 1.5rem; 
-        margin-top: 24px; 
-        letter-spacing: 0.1em;
+        font-size: 1.8rem; 
+        margin-top: 30px; 
+        letter-spacing: 0.15em;
+        font-weight: 700;
       }
-      .loading-text span { color: #C5A572; font-style: italic; }
+      .loading-text span { color: #C5A572; font-style: italic; font-weight: 700; }
       #root:not(:empty) + #app-loader { opacity: 0; pointer-events: none; }
     </style>
 
@@ -47,6 +48,9 @@
             colors: {
               brand: { bg: '#FAFAFA', graphite: '#1A1A2E', gold: '#C5A572', goldHover: '#b0905d' },
               vizu: { cream: '#FAFAFA', gold: '#C5A572', dark: '#1A1A2E', gray: '#F4F4F4' }
+            },
+            boxShadow: {
+              '3xl': '0 35px 60px -15px rgba(0, 0, 0, 0.3)',
             }
           }
         }

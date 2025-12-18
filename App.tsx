@@ -194,13 +194,13 @@ export default function App() {
         <div className="flex flex-col h-screen">
           <header className="bg-white border-b border-slate-100 px-6 py-4 flex justify-between items-center z-40 shrink-0">
             <div className="flex items-center gap-4 cursor-pointer group" onClick={() => { setShowHistoryView(false); setShowAdmin(false); setAnalysisResult(null); }}>
-              <Logo className="w-9 h-9" />
+              <Logo className="w-10 h-10" />
               <div className="flex flex-col">
                 <h1 className="font-serif text-xl font-bold tracking-tight leading-none">
                   <span className="text-brand-graphite">Vizu</span>
                   <span className="text-brand-gold">Halizando</span>
                 </h1>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital IA</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital Pro</span>
               </div>
             </div>
             
@@ -227,7 +227,7 @@ export default function App() {
                <AdminDashboard />
              ) : showHistoryView ? (
                <div className="w-full max-w-5xl animate-fade-in">
-                  <h2 className="text-3xl font-serif font-bold mb-8 text-brand-graphite">Seu Histórico <span className="text-brand-gold italic">Sob Medida</span></h2>
+                  <h2 className="text-3xl font-serif font-bold mb-8 text-brand-graphite">Seu Histórico <span className="text-brand-gold italic">Halizando</span></h2>
                   {history.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
                       {history.map((item) => (
@@ -259,8 +259,8 @@ export default function App() {
                    <div className="w-full max-w-2xl animate-fade-in py-8">
                       <div className="text-center mb-10">
                         <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6 shadow-xl shadow-brand-gold/10 border border-brand-gold/20"><Sparkles size={40}/></div>
-                        <h2 className="text-4xl font-serif font-bold text-brand-graphite mb-3 leading-tight">O Atelier <span className="italic text-brand-gold">Halizando</span></h2>
-                        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">Análise biométrica de precisão para elevar sua imagem ao próximo nível.</p>
+                        <h2 className="text-4xl font-serif font-bold text-brand-graphite mb-3 leading-tight">Consultoria <span className="italic text-brand-gold">Halizando</span></h2>
+                        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">Análise biométrica de precisão para elevar sua imagem ao patamar de luxo.</p>
                       </div>
 
                       <div className="bg-white p-8 rounded-[48px] shadow-2xl border border-slate-100 mb-8 space-y-8">
@@ -338,9 +338,9 @@ export default function App() {
                         <Sparkles className="absolute inset-0 m-auto text-brand-graphite w-8 h-8" />
                       </div>
                       <div className="space-y-3">
-                        <h3 className="font-serif italic text-4xl text-brand-graphite">Tecendo sua Identidade...</h3>
+                        <h3 className="font-serif italic text-4xl text-brand-graphite">Tecendo seu Estudo...</h3>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em] animate-pulse">
-                          Harmonização de Proporções Áureas
+                          Mapeamento Biométrico em Tempo Real
                         </p>
                       </div>
                    </div>
