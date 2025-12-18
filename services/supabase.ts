@@ -1,3 +1,4 @@
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -10,16 +11,20 @@ const getEnv = (key: string): string | undefined => {
     for (const prefix of prefixes) {
         const fullKey = `${prefix}${key}`;
         
-        // Tenta import.meta.env (Vite)
-        // Fix: Cast import.meta to any to avoid TS error "Property 'env' does not exist on type 'ImportMeta'"
-        if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[fullKey]) {
-            return (import.meta as any).env[fullKey];
-        }
+        // 1. Tenta import.meta.env (Padrão Vite/Bundlers modernos)
+        try {
+            // @ts-ignore
+            if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[fullKey]) {
+                return (import.meta as any).env[fullKey];
+            }
+        } catch (e) {}
         
-        // Tenta process.env (Vercel/Webpack)
-        if (typeof process !== 'undefined' && process.env && process.env[fullKey]) {
-            return process.env[fullKey];
-        }
+        // 2. Tenta process.env (Vercel/Node/CI)
+        try {
+            if (typeof process !== 'undefined' && process.env && process.env[fullKey]) {
+                return process.env[fullKey];
+            }
+        } catch (e) {}
     }
     
     return undefined;
@@ -37,19 +42,24 @@ let supabaseInstance: SupabaseClient | null = null;
 if (isValid(supabaseUrl) && isValid(supabaseAnonKey)) {
     try {
         supabaseInstance = createClient(supabaseUrl!, supabaseAnonKey!);
-        console.log("✅ VizuHalizando: Cloud Sync Ativado via Supabase.");
+        console.log("✅ VizuHalizando: Cloud Sync estabelecido com sucesso.");
     } catch (e) {
-        console.error("❌ Falha crítica na conexão Supabase:", e);
+        console.error("❌ Supabase Error: Falha ao inicializar o cliente.", e);
     }
 } else {
-    console.warn("⚠️ VizuHalizando: Operando em MODO LOCAL. Sincronização Vercel pendente.");
+    console.warn("⚠️ VizuHalizando: Operando em MODO LOCAL. Sincronização em nuvem desativada.");
+    console.debug("Diagnóstico de Variáveis:", {
+        urlFound: !!supabaseUrl,
+        keyFound: !!supabaseAnonKey,
+        context: typeof process !== 'undefined' ? 'Node/Vercel' : 'Browser Only'
+    });
 }
 
-// Exportamos as chaves para o diagnóstico na UI
+// Exportamos as chaves para o diagnóstico na UI de depuração do App.tsx
 export const debugConnection = {
     hasUrl: isValid(supabaseUrl),
     hasKey: isValid(supabaseAnonKey),
-    urlPrefix: supabaseUrl ? `${supabaseUrl.substring(0, 12)}...` : 'ausente'
+    urlPrefix: supabaseUrl ? `${supabaseUrl.substring(0, 15)}...` : 'ausente'
 };
 
 export const supabase = supabaseInstance;
