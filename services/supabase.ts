@@ -1,21 +1,56 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// No ambiente de produção/SaaS, estas chaves vêm das variáveis de ambiente
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
+/**
+ * Função utilitária para buscar variáveis de ambiente em diferentes contextos de build
+ * (Vite usa import.meta.env, Webpack usa process.env)
+ */
+const getEnv = (key: string): string | undefined => {
+    const prefixes = ['', 'VITE_', 'REACT_APP_'];
+    
+    for (const prefix of prefixes) {
+        const fullKey = `${prefix}${key}`;
+        
+        // Tenta import.meta.env (Vite)
+        // @ts-ignore
+        if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[fullKey]) {
+            return import.meta.env[fullKey];
+        }
+        
+        // Tenta process.env (Vercel/Webpack)
+        if (typeof process !== 'undefined' && process.env && process.env[fullKey]) {
+            return process.env[fullKey];
+        }
+    }
+    
+    return undefined;
+};
 
-// Inicialização segura para evitar "supabaseUrl is required" crash
+const supabaseUrl = getEnv('SUPABASE_URL');
+const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
+
+const isValid = (val: string | undefined): boolean => {
+    return !!val && val !== '' && val !== 'undefined' && val !== 'null';
+};
+
 let supabaseInstance: SupabaseClient | null = null;
 
-if (supabaseUrl && supabaseAnonKey && supabaseUrl !== '') {
+if (isValid(supabaseUrl) && isValid(supabaseAnonKey)) {
     try {
-        supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+        supabaseInstance = createClient(supabaseUrl!, supabaseAnonKey!);
+        console.log("✅ VizuHalizando: Cloud Sync Ativado via Supabase.");
     } catch (e) {
-        console.error("Erro ao inicializar Supabase:", e);
+        console.error("❌ Falha crítica na conexão Supabase:", e);
     }
 } else {
-    console.warn("Supabase não configurado. O sistema usará o Banco de Dados Local (LocalStorage) como fallback de desenvolvimento.");
+    console.warn("⚠️ VizuHalizando: Operando em MODO LOCAL. Sincronização Vercel pendente.");
 }
+
+// Exportamos as chaves para o diagnóstico na UI
+export const debugConnection = {
+    hasUrl: isValid(supabaseUrl),
+    hasKey: isValid(supabaseAnonKey),
+    urlPrefix: supabaseUrl ? `${supabaseUrl.substring(0, 12)}...` : 'ausente'
+};
 
 export const supabase = supabaseInstance;
