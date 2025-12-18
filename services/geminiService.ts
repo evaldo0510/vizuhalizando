@@ -73,16 +73,19 @@ export const analyzeImageWithGemini = async (
   const mainImage = base64Images[0].includes(',') ? base64Images[0].split(',')[1] : base64Images[0];
 
   const prompt = `Atue como um consultor de visagismo de luxo e mestre em colorimetria.
-  Dados Biométricos: Altura ${metrics.height}m, Peso ${metrics.weight}kg.
-  Contexto: ${environment || 'Geral'}.
+  Dados Biométricos fornecidos pelo usuário: Altura ${metrics.height}m, Peso ${metrics.weight}kg.
+  Contexto da consulta: ${environment || 'Geral'}.
   
-  TAREFAS:
-  1. Analise tecnicamente a estrutura óssea facial e o biotipo corporal.
-  2. Determine o subtom de pele exato. 
-  3. REGRA CROMÁTICA: Na paleta de cores, os nomes das cores devem seguir o padrão: "Nome da Cor (By Teodoro)".
-  4. Sugira exatamente 10 looks completos e luxuosos.
+  TAREFAS TÉCNICAS:
+  1. Analise a imagem para identificar: Formato de Rosto, Biotipo Corporal (baseado em altura/peso e proporções visíveis) e Tom de Pele exato (Cromotipologia).
+  2. Forneça uma análise detalhada sobre como o formato do rosto influencia a percepção da imagem do cliente.
+  3. Crie uma paleta de 5 cores ideais, com nomes customizados usando a marca "By Teodoro" (ex: "Verde Esmeralda By Teodoro").
+  4. Gere 10 sugestões de looks LUXUOSOS e completos que valorizem as características detectadas. 
+  5. Para cada look, inclua uma justificativa visagista (motivo).
   
-  Retorne em JSON. SEJA INSTANTÂNEO.`;
+  IMPORTANTE: Se a imagem estiver embaçada, o campo quality_check.valid deve ser false, mas tente realizar uma extrapolação neural para os campos restantes.
+  
+  Retorne EXCLUSIVAMENTE em JSON seguindo o schema fornecido.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -94,20 +97,15 @@ export const analyzeImageWithGemini = async (
     },
     config: {
       responseMimeType: 'application/json',
-      responseSchema: analysisSchema,
-      thinkingConfig: { thinkingBudget: 0 } // Velocidade máxima sem delays de raciocínio
+      responseSchema: analysisSchema
     }
   });
 
   if (response.text) {
     const data = JSON.parse(response.text);
-    return {
-        ...data,
-        id: crypto.randomUUID(),
-        date: new Date().toISOString()
-    } as AnalysisResult;
+    return data as AnalysisResult;
   }
-  throw new Error("Erro na consultoria técnica.");
+  throw new Error("Falha na consultoria neural do Atelier.");
 };
 
 export const generateVisualEdit = async (
@@ -121,14 +119,17 @@ export const generateVisualEdit = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
-  const lookDetails = `${title}: ${details}. ${context}. ${extra}`;
+  const lookDetails = `${title}: ${details}. Contexto: ${context}. ${extra}`;
 
+  // Prompt ultra-detalhado para o Gemini Flash Image garantir a semelhança facial
   const masterPrompt = `
-    ULTRA-REALISTIC PHOTOREALISTIC FASHION RENDER (8K):
-    Subject MUST have the EXACT facial features and eyes as the provided image.
-    Dynamic model pose, high-luxury tailoring for: ${lookDetails}.
-    Luxury Studio environment, Cinematic lighting, Phase One XF quality.
-    NO DISTORTIONS, NATURAL TEXTURES.
+    ULTRA-REALISTIC HIGH-FASHION EDITORIAL PHOTOGRAPHY (8K, Phase One XF).
+    The person in the provided image MUST have their facial features, eyes, and expressions PRESERVED EXACTLY.
+    TRANSFORM only the clothing and the environment.
+    OUTFIT DESCRIPTION: ${lookDetails}.
+    Maintain a luxury studio or high-end urban aesthetic. 
+    Cinematic lighting, Rembrandt style. No skin artifacts.
+    The resulting image must look like a professional brand campaign.
   `;
 
   const response = await ai.models.generateContent({
@@ -140,7 +141,9 @@ export const generateVisualEdit = async (
       ]
     },
     config: {
-        imageConfig: { aspectRatio: "3:4" }
+        imageConfig: { 
+          aspectRatio: "3:4"
+        }
     }
   });
 
@@ -148,5 +151,5 @@ export const generateVisualEdit = async (
   if (part?.inlineData) {
     return part.inlineData.data;
   }
-  throw new Error("Falha ao esculpir a imagem editorial.");
+  throw new Error("O Atelier não conseguiu esculpir a imagem editorial no momento.");
 };

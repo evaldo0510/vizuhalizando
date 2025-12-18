@@ -2,9 +2,10 @@
 import React, { useState } from 'react';
 import { 
   X, Play, Lock, Check, ChevronRight, 
-  Sparkles, Zap, Coins, Cpu, Palette, Shirt, ShoppingBag, History, ArrowRight
+  Sparkles, Zap, Coins, Cpu, Palette, Shirt, ShoppingBag, History, ArrowRight, Loader2
 } from 'lucide-react';
 import { Logo } from './Logo';
+import { generatePromoVideo } from '../services/videoService';
 
 interface LandingPageProps {
   onEnterApp: () => void;
@@ -13,9 +14,30 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginClick }) => {
   const [activeModal, setActiveModal] = useState<'video' | 'terms' | 'privacy' | 'credits' | null>(null);
+  const [isGeneratingPromo, setIsGeneratingPromo] = useState(false);
+  const [promoUrl, setPromoUrl] = useState<string | null>(null);
 
-  const openModal = (modal: 'video' | 'terms' | 'privacy' | 'credits') => setActiveModal(modal);
+  const openModal = (modal: 'video' | 'terms' | 'privacy' | 'credits') => {
+    setActiveModal(modal);
+    if (modal === 'video' && !promoUrl) {
+      handleLoadPromo();
+    }
+  };
+
   const closeModal = () => setActiveModal(null);
+
+  const handleLoadPromo = async () => {
+    setIsGeneratingPromo(true);
+    try {
+      // Prompt padrão de luxo para o VizuHalizando
+      const url = await generatePromoVideo("Luxury digital atelier showing futuristic AI face mapping, stylish virtual try-ons of high-end suits and dresses, elegant motion graphics, professional lighting, 4k cinematic quality");
+      setPromoUrl(url);
+    } catch (err) {
+      console.error("Erro ao carregar promo:", err);
+    } finally {
+      setIsGeneratingPromo(false);
+    }
+  };
 
   return (
     <div className="antialiased text-brand-graphite bg-brand-bg selection:bg-brand-gold/30">
@@ -72,7 +94,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
                       agora em suas mãos.
                     </h1>
                     <p className="text-xl text-slate-300 mb-12 max-w-lg font-light leading-relaxed">
-                      Deixe que nossa inteligência biométrica revele os cortes, cores e trajes que ressoam with sua verdadeira identidade visual.
+                      Deixe que nossa inteligência biométrica revele os cortes, cores e trajes que ressoam com sua identidade visual única.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-6">
                         <button onClick={onEnterApp} className="px-10 py-5 bg-brand-gold text-brand-graphite rounded-2xl font-bold transition-all shadow-2xl shadow-brand-gold/20 flex items-center justify-center gap-4 group hover:bg-white">
@@ -171,6 +193,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
             </div>
         </section>
 
+        {/* MODAL: VÍDEO PROMOCIONAL VEO */}
+        {activeModal === 'video' && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-fade-in">
+                <div className="absolute inset-0 bg-brand-graphite/98 backdrop-blur-2xl" onClick={closeModal}></div>
+                <div className="relative w-full max-w-6xl bg-black rounded-[40px] shadow-3xl overflow-hidden border border-white/10 animate-scale-up grid lg:grid-cols-12">
+                    <button onClick={closeModal} className="absolute top-8 right-8 z-50 p-3 bg-white/10 text-white hover:bg-brand-gold rounded-full transition-all"><X size={24} /></button>
+                    <div className="lg:col-span-8 aspect-video bg-slate-900 relative flex items-center justify-center">
+                        {isGeneratingPromo ? (
+                            <div className="flex flex-col items-center gap-6 text-center p-12">
+                                <Loader2 className="w-16 h-16 text-brand-gold animate-spin" />
+                                <div className="space-y-2">
+                                    <h4 className="text-xl font-serif text-white">Gerando sua prévia exclusiva...</h4>
+                                    <p className="text-[10px] text-brand-gold font-bold uppercase tracking-[0.4em] animate-pulse">Veo Video Engine v3.1</p>
+                                </div>
+                            </div>
+                        ) : promoUrl ? (
+                            <video src={promoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                        ) : (
+                            <div className="text-white text-center p-10">Falha ao carregar prévia promocional.</div>
+                        )}
+                    </div>
+                    <div className="lg:col-span-4 p-10 lg:p-12 flex flex-col justify-center space-y-10 bg-brand-graphite border-l border-white/5">
+                        <h3 className="text-3xl font-serif font-bold text-white">O <span className="text-brand-gold italic">Futuro</span> da Imagem</h3>
+                        <div className="space-y-6">
+                            <div className="flex gap-4"><div className="p-2 bg-white/5 text-brand-gold rounded-xl"><Cpu size={20}/></div><p className="text-[11px] text-slate-400 leading-relaxed">Mapeamento Neural de Proporções Faciais em Tempo Real.</p></div>
+                            <div className="flex gap-4"><div className="p-2 bg-white/5 text-brand-gold rounded-xl"><Palette size={20}/></div><p className="text-[11px] text-slate-400 leading-relaxed">Cromática Digital baseada em Colorimetria Avançada.</p></div>
+                            <div className="flex gap-4"><div className="p-2 bg-white/5 text-brand-gold rounded-xl"><Shirt size={20}/></div><p className="text-[11px] text-slate-400 leading-relaxed">Provador Virtual HD para visualização imediata.</p></div>
+                        </div>
+                        <button onClick={onEnterApp} className="w-full py-5 bg-brand-gold text-brand-graphite rounded-2xl font-bold flex items-center justify-center gap-3 shadow-2xl hover:bg-white transition-all">INICIAR AGORA <ArrowRight size={18}/></button>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* MODAL: BANCO DE CRÉDITOS */}
         {activeModal === 'credits' && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fade-in">
@@ -216,39 +272,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
                       </div>
                    </div>
                    <button onClick={onEnterApp} className="w-full py-5 bg-brand-graphite text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl shadow-brand-graphite/10">Ir para o provador e comprar</button>
-                </div>
-            </div>
-        )}
-
-        {/* MODAL: VÍDEO */}
-        {activeModal === 'video' && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 animate-fade-in">
-                <div className="absolute inset-0 bg-brand-graphite/98 backdrop-blur-2xl" onClick={closeModal}></div>
-                <div className="relative w-full max-w-6xl bg-black rounded-[40px] shadow-3xl overflow-hidden border border-white/10 animate-scale-up grid lg:grid-cols-12">
-                    <button onClick={closeModal} className="absolute top-8 right-8 z-50 p-3 bg-white/10 text-white hover:bg-brand-gold rounded-full transition-all"><X size={24} /></button>
-                    <div className="lg:col-span-8 aspect-video bg-slate-900 relative">
-                        <iframe className="w-full h-full" src="https://www.youtube.com/embed/DaSKyQ7y4sU?autoplay=1&mute=0&controls=0&rel=0" frameBorder="0" allow="autoplay; encrypted-media" allowFullScreen></iframe>
-                    </div>
-                    <div className="lg:col-span-4 p-10 lg:p-12 flex flex-col justify-center space-y-10 bg-brand-graphite border-l border-white/5">
-                        <h3 className="text-3xl font-serif font-bold text-white">O <span className="text-brand-gold italic">Futuro</span> da Imagem</h3>
-                        <div className="space-y-6">
-                            <div className="flex gap-4"><div className="p-2 bg-white/5 text-brand-gold rounded-xl"><Cpu size={20}/></div><p className="text-[11px] text-slate-400 leading-relaxed">Mapeamento Neural de Proporções Faciais.</p></div>
-                            <div className="flex gap-4"><div className="p-2 bg-white/5 text-brand-gold rounded-xl"><Palette size={20}/></div><p className="text-[11px] text-slate-400 leading-relaxed">Cromática Digital e Detecção de Subtom.</p></div>
-                        </div>
-                        <button onClick={onEnterApp} className="w-full py-5 bg-brand-gold text-brand-graphite rounded-2xl font-bold flex items-center justify-center gap-3">INICIAR AGORA <ArrowRight size={18}/></button>
-                    </div>
-                </div>
-            </div>
-        )}
-
-        {/* OUTROS MODAIS (Terms, Privacy) */}
-        {activeModal === 'terms' && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 animate-fade-in">
-                <div className="absolute inset-0 bg-brand-graphite/90 backdrop-blur-md" onClick={closeModal}></div>
-                <div className="relative w-full max-w-xl bg-white rounded-[40px] shadow-3xl p-12">
-                    <h3 className="font-serif text-3xl font-bold text-brand-graphite mb-6">Termos de Uso</h3>
-                    <p className="text-sm text-slate-500 leading-relaxed mb-8">Os créditos do VizuHalizando não expiram e garantem acesso às ferramentas de análise biométrica e IA generativa.</p>
-                    <button onClick={closeModal} className="w-full py-4 bg-brand-graphite text-white rounded-2xl font-bold">Aceitar e Continuar</button>
                 </div>
             </div>
         )}
