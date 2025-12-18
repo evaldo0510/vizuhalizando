@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Eye, Save, Maximize2, Loader2, RotateCcw, Lock, Unlock, ZoomIn, Move, FileImage, Check, MousePointer2 } from 'lucide-react';
+import { Eye, Save, Maximize2, Loader2, RotateCcw, Lock, Unlock, ZoomIn, Move, FileImage, Check, MousePointer2, Download } from 'lucide-react';
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 
 interface ComparisonViewProps {
@@ -26,11 +26,9 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   const [isProcessingDownload, setIsProcessingDownload] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  // Refs to control independent zoom states
   const generatedRef = useRef<ReactZoomPanPinchRef>(null);
   const originalRef = useRef<ReactZoomPanPinchRef>(null);
 
-  // Determine which image to show
   const showOriginal = isHolding || isLocked;
 
   const handleDownload = async (format: 'png' | 'jpeg') => {
@@ -59,27 +57,26 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
 
         ctx.drawImage(img, 0, 0);
 
-        const dataUrl = canvas.toDataURL(`image/${format}`, 1.0);
+        const dataUrl = canvas.toDataURL(`image/${format}`, format === 'jpeg' ? 0.95 : 1.0);
         
         const link = document.createElement('a');
         link.href = dataUrl;
-        link.download = `vizu-edit-${Date.now()}.${format === 'jpeg' ? 'jpg' : 'png'}`;
+        link.download = `vizu-atelier-look-${Date.now()}.${format === 'jpeg' ? 'jpg' : 'png'}`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
-        // Success Animation Logic
         setIsSaved(true);
         setShowSaveOptions(false);
         onSave();
         
         setTimeout(() => {
             setIsSaved(false);
-        }, 2000);
+        }, 2500);
 
     } catch (error) {
         console.error("Erro ao baixar imagem", error);
-        alert("Erro ao processar imagem para download.");
+        alert("Ocorreu um erro ao processar sua imagem.");
     } finally {
         setIsProcessingDownload(false);
     }
@@ -95,10 +92,10 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
   };
 
   return (
-    <div className="w-full h-full relative group select-none overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800 transition-all duration-300 shadow-lg border border-slate-200 dark:border-slate-700">
+    <div className="w-full h-full relative group select-none overflow-hidden rounded-[32px] bg-slate-100 dark:bg-slate-900 transition-all duration-300 shadow-2xl border border-slate-200/50 dark:border-white/5">
         
-        {/* Layer 1: Generated Image (Default) */}
-        <div className={`absolute inset-0 transition-opacity duration-200 ${showOriginal ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}>
+        {/* Layer 1: Generated Image */}
+        <div className={`absolute inset-0 transition-opacity duration-300 ${showOriginal ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'}`}>
             <TransformWrapper
                 ref={generatedRef}
                 initialScale={1}
@@ -107,7 +104,6 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                 centerOnInit
                 wheel={{ step: 0.2 }}
                 doubleClick={{ mode: "reset", disabled: false }}
-                pinch={{ disabled: false }}
             >
                 <TransformComponent 
                     wrapperClass="w-full h-full !cursor-grab active:!cursor-grabbing"
@@ -129,8 +125,8 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
             </TransformWrapper>
         </div>
 
-        {/* Layer 2: Original Image (Overlay) */}
-        <div className={`absolute inset-0 transition-opacity duration-200 ${showOriginal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
+        {/* Layer 2: Original Image */}
+        <div className={`absolute inset-0 transition-opacity duration-300 ${showOriginal ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
             <TransformWrapper
                 ref={originalRef}
                 initialScale={1}
@@ -139,7 +135,6 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
                 centerOnInit
                 wheel={{ step: 0.2 }}
                 doubleClick={{ mode: "reset", disabled: false }}
-                pinch={{ disabled: false }}
             >
                 <TransformComponent 
                     wrapperClass="w-full h-full !cursor-grab active:!cursor-grabbing"
@@ -156,131 +151,110 @@ export const ComparisonView: React.FC<ComparisonViewProps> = ({
             </TransformWrapper>
         </div>
 
-        {/* Controls Overlay */}
-        <div className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-4">
-                {/* Header Controls */}
+        {/* HUD Overlay */}
+        <div className="absolute inset-0 pointer-events-none z-20 flex flex-col justify-between p-6">
                 <div className="flex justify-between items-start">
-                    
-                    {/* Visual Hints */}
-                    <div className="pointer-events-none opacity-60">
-                        <div className="flex items-center gap-2 px-2 py-1 bg-black/40 backdrop-blur-md rounded-lg text-white/90 text-[10px] font-bold border border-white/10">
-                            <ZoomIn className="w-3 h-3" />
-                            <span className="hidden sm:inline">2x TOQUE P/ RESET</span>
-                            <span className="opacity-30 hidden sm:inline">|</span>
-                            <MousePointer2 className="w-3 h-3" />
-                            <span className="uppercase">{showOriginal ? "Zoom: Original" : "Zoom: Gerado"}</span>
+                    <div className="pointer-events-none opacity-80 scale-90 sm:scale-100 origin-top-left">
+                        <div className="flex items-center gap-3 px-3 py-1.5 bg-black/60 backdrop-blur-xl rounded-full text-white/90 text-[10px] font-bold border border-white/10 shadow-xl">
+                            <ZoomIn className="w-3.5 h-3.5 text-brand-gold" />
+                            <span className="uppercase tracking-widest">{showOriginal ? "VISUALIZANDO: ORIGINAL" : "VISUALIZANDO: DESIGN IA"}</span>
                         </div>
                     </div>
 
                     <div className="flex gap-2 pointer-events-auto">
                         <button
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md transition-all shadow-sm ring-1 ring-white/10 ${
-                            isHolding && !isLocked
-                            ? 'bg-indigo-600 text-white scale-105 ring-indigo-400' 
-                            : 'bg-black/60 text-white hover:bg-black/80'
-                        }`}
-                        onMouseDown={() => setIsHolding(true)}
-                        onMouseUp={() => setIsHolding(false)}
-                        onMouseLeave={() => setIsHolding(false)}
-                        onTouchStart={() => setIsHolding(true)}
-                        onTouchEnd={() => setIsHolding(false)}
-                        title="Mantenha pressionado para ver a imagem original"
+                          className={`flex items-center gap-3 px-4 py-2 rounded-full text-[10px] font-black tracking-widest backdrop-blur-xl transition-all shadow-xl border border-white/10 ${
+                              isHolding && !isLocked
+                              ? 'bg-brand-gold text-brand-graphite scale-110' 
+                              : 'bg-black/60 text-white hover:bg-black/80'
+                          }`}
+                          onMouseDown={() => setIsHolding(true)}
+                          onMouseUp={() => setIsHolding(false)}
+                          onMouseLeave={() => setIsHolding(false)}
+                          onTouchStart={() => setIsHolding(true)}
+                          onTouchEnd={() => setIsHolding(false)}
                         >
-                        <Eye className="w-3 h-3" />
-                        {isHolding ? "ORIGINAL" : "SEGURE"}
+                        <Eye className="w-3.5 h-3.5" />
+                        {isHolding ? "ORIGINAL" : "VER ORIGINAL"}
                         </button>
 
                         <button
-                        onClick={() => setIsLocked(!isLocked)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold backdrop-blur-md transition-all shadow-sm ring-1 ring-white/10 ${
-                            isLocked
-                            ? 'bg-amber-500 text-white ring-amber-300' 
-                            : 'bg-black/60 text-white hover:bg-black/80'
-                        }`}
-                        title={isLocked ? "Destravar para ver Look Gerado" : "Fixar Original para Ajustes (Zoom/Pan)"}
+                          onClick={() => setIsLocked(!isLocked)}
+                          className={`flex items-center gap-3 px-4 py-2 rounded-full text-[10px] font-black tracking-widest backdrop-blur-xl transition-all shadow-xl border border-white/10 ${
+                              isLocked
+                              ? 'bg-brand-gold text-brand-graphite' 
+                              : 'bg-black/60 text-white hover:bg-black/80'
+                          }`}
                         >
-                        {isLocked ? <Unlock className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-                        {isLocked ? "FIXADO" : "FIXAR"}
+                        {isLocked ? <Unlock className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                        {isLocked ? "DESTRAVAR" : "FIXAR"}
                         </button>
                     </div>
                 </div>
-                
-                {/* Centered Label */}
-                {showOriginal && (
-                <div className="absolute top-16 left-1/2 -translate-x-1/2 pointer-events-none">
-                    <div className={`px-3 py-1.5 rounded-lg font-bold shadow-lg animate-fade-in border border-white/20 text-[10px] tracking-wider backdrop-blur-md ${
-                        isLocked ? 'bg-amber-500/90 text-white' : 'bg-indigo-600/90 text-white'
-                    }`}>
-                        FOTO ORIGINAL {isLocked && "(MODO EDIÇÃO)"}
-                    </div>
-                </div>
-                )}
 
-            {/* Bottom Action Buttons */}
-            <div className="flex justify-center items-end gap-3 pointer-events-auto opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all duration-300 translate-y-0 sm:translate-y-4 sm:group-hover:translate-y-0 relative">
-                    <div className="flex gap-2 bg-black/70 backdrop-blur-md p-2 rounded-full shadow-lg border border-white/10">
+            <div className="flex justify-center items-end gap-3 pointer-events-auto relative">
+                <div className="flex gap-3 bg-black/70 backdrop-blur-2xl p-2.5 rounded-[24px] shadow-2xl border border-white/10 animate-fade-in-up">
                     <button 
                         onClick={handleResetZoom} 
-                        className="p-2.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors" 
-                        title="Resetar Zoom da imagem atual"
+                        className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all active:scale-90" 
+                        title="Resetar Zoom"
                     >
-                        <RotateCcw className="w-4 h-4" />
+                        <RotateCcw className="w-5 h-5" />
                     </button>
                     
-                    <div className="w-px bg-white/20 mx-1 self-center h-6"></div>
+                    <div className="w-px bg-white/10 mx-1 self-center h-8"></div>
 
                     <div className="relative">
                         <button 
                             onClick={(e) => { e.stopPropagation(); setShowSaveOptions(!showSaveOptions); }} 
-                            className={`p-2.5 rounded-full shadow-sm transition-all duration-500 transform ${
+                            className={`p-3 rounded-full shadow-xl transition-all transform active:scale-95 ${
                             isSaved 
-                                ? 'bg-green-500 text-white ring-4 ring-green-300 scale-110' 
+                                ? 'bg-green-500 text-white scale-110' 
                                 : showSaveOptions 
-                                    ? 'bg-indigo-600 text-white' 
-                                    : 'bg-white text-slate-900 hover:bg-indigo-50'
-                            }`} 
-                            title="Salvar Imagem"
+                                    ? 'bg-brand-gold text-brand-graphite' 
+                                    : 'bg-white text-brand-graphite hover:bg-brand-gold'
+                            }`}
                         >
-                            {isSaved ? (
-                                <Check className="w-4 h-4 animate-bounce" />
-                            ) : (
-                                parentIsSaving || isProcessingDownload ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />
-                            )}
+                            {isSaved ? <Check className="w-5 h-5 animate-pulse" /> : 
+                              (parentIsSaving || isProcessingDownload ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />)}
                         </button>
 
-                        {/* Save Options Popover */}
                         {showSaveOptions && !isSaved && (
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 p-2 min-w-[140px] animate-fade-in z-50">
-                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 px-2 text-center">
-                                    Salvar Como
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 bg-white dark:bg-slate-800 rounded-[24px] shadow-3xl border border-slate-200 dark:border-white/5 p-3 min-w-[180px] animate-fade-in z-50 overflow-hidden">
+                                <div className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 px-3">
+                                    Exportar Estilo
                                 </div>
-                                <div className="flex flex-col gap-1">
+                                <div className="space-y-1">
                                     <button 
                                         onClick={() => handleDownload('png')}
-                                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg w-full"
+                                        className="flex items-center justify-between px-4 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-brand-gold hover:text-brand-graphite rounded-xl w-full transition-all group/opt"
                                     >
-                                        <FileImage className="w-3 h-3 text-indigo-500" />
-                                        PNG (Alta Qualidade)
+                                        <div className="flex items-center gap-3">
+                                            <FileImage className="w-4 h-4 text-brand-gold group-hover/opt:text-brand-graphite" />
+                                            PNG (Ultra HQ)
+                                        </div>
+                                        <Download size={14} className="opacity-30" />
                                     </button>
                                     <button 
                                         onClick={() => handleDownload('jpeg')}
-                                        className="flex items-center gap-2 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg w-full"
+                                        className="flex items-center justify-between px-4 py-3 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-brand-gold hover:text-brand-graphite rounded-xl w-full transition-all group/opt"
                                     >
-                                        <FileImage className="w-3 h-3 text-blue-500" />
-                                        JPG (Padrão)
+                                        <div className="flex items-center gap-3">
+                                            <FileImage className="w-4 h-4 text-blue-500 group-hover/opt:text-brand-graphite" />
+                                            JPG (Otimizado)
+                                        </div>
+                                        <Download size={14} className="opacity-30" />
                                     </button>
                                 </div>
-                                <div className="w-4 h-4 bg-white dark:bg-slate-800 absolute -bottom-2 left-1/2 -translate-x-1/2 rotate-45 border-r border-b border-slate-200 dark:border-slate-700"></div>
                             </div>
                         )}
                     </div>
                     
                     <button 
                         onClick={(e) => { e.stopPropagation(); onExpand(); }} 
-                        className="p-2.5 bg-indigo-600 text-white hover:bg-indigo-500 rounded-full shadow-sm transition-transform hover:scale-105" 
-                        title="Expandir"
+                        className="p-3 bg-brand-gold text-brand-graphite hover:bg-white rounded-full shadow-xl transition-all hover:scale-105 active:scale-95" 
                     >
-                        <Maximize2 className="w-4 h-4" />
+                        <Maximize2 className="w-5 h-5" />
                     </button>
                 </div>
             </div>

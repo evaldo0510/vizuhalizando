@@ -10,7 +10,7 @@ export interface Usuario {
   nivel_acesso: 'user' | 'admin';
   data_cadastro: string;
   isPremium?: boolean;
-  creditos: number; // Novo campo
+  creditos: number;
 }
 
 export interface Analise {
@@ -19,6 +19,13 @@ export interface Analise {
   foto_url: string;
   resultado_json: AnalysisResult;
   data_analise: string;
+}
+
+export interface CreditPackage {
+  id: string;
+  credits: number;
+  price: number;
+  name: string;
 }
 
 const ADMIN_EMAILS = ['evaldo0510@gmail.com', 'aljariristartups@gmail.com'];
@@ -50,7 +57,7 @@ class HybridDatabase {
       foto_perfil: googleUser.photoURL || googleUser.user_metadata?.avatar_url,
       nivel_acesso: role,
       data_cadastro: user?.data_cadastro || new Date().toISOString(),
-      creditos: user ? user.creditos : 1 // 1 crédito grátis para novos usuários
+      creditos: user ? user.creditos : 1 
     };
 
     if (!user || user.nome !== userData.nome || user.foto_perfil !== userData.foto_perfil) {
@@ -138,7 +145,6 @@ class HybridDatabase {
       Histórico de Preferências:
       - O usuário GOSTOU de: ${likes.join(', ')}.
       - O usuário NÃO GOSTOU de: ${dislikes.join(', ')}.
-      Priorize elementos similares aos que ele gostou e evite os que ele rejeitou.
     `;
   }
 
@@ -146,6 +152,20 @@ class HybridDatabase {
     return this.getLocalTable<Analise>('analises')
       .filter(a => a.usuario_id === usuario_id)
       .sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime());
+  }
+
+  // Métodos de Gerenciamento de Créditos (Admin)
+  async getCreditPackages(): Promise<CreditPackage[]> {
+    const packages = localStorage.getItem('vizu_credit_packages');
+    return packages ? JSON.parse(packages) : [
+      { id: '1', name: 'Single Pack', credits: 1, price: 4.90 },
+      { id: '2', name: 'Essential Pack', credits: 5, price: 14.90 },
+      { id: '3', name: 'Premium Pack', credits: 12, price: 24.90 }
+    ];
+  }
+
+  async saveCreditPackages(packages: CreditPackage[]): Promise<void> {
+    localStorage.setItem('vizu_credit_packages', JSON.stringify(packages));
   }
 
   async getAdminStats() {

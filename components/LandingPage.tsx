@@ -4,7 +4,7 @@ import {
   X, Play, Lock, Check, ChevronRight, 
   Sparkles, Zap, Coins, Cpu, Palette, Shirt, ShoppingBag, History, ArrowRight
 } from 'lucide-react';
-import { Logo } from '../Logo';
+import { Logo } from './Logo';
 
 interface LandingPageProps {
   onEnterApp: () => void;
@@ -72,7 +72,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
                       agora em suas mãos.
                     </h1>
                     <p className="text-xl text-slate-300 mb-12 max-w-lg font-light leading-relaxed">
-                      Deixe que nossa inteligência biométrica revele os cortes, cores e trajes que ressoam com sua verdadeira identidade visual.
+                      Deixe que nossa inteligência biométrica revele os cortes, cores e trajes que ressoam with sua verdadeira identidade visual.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-6">
                         <button onClick={onEnterApp} className="px-10 py-5 bg-brand-gold text-brand-graphite rounded-2xl font-bold transition-all shadow-2xl shadow-brand-gold/20 flex items-center justify-center gap-4 group hover:bg-white">

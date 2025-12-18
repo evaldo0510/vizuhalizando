@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { X, Loader2, Chrome, Sparkles, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../services/supabase';
 import { db } from '../services/database';
-import { Logo } from '../Logo';
+import { Logo } from './Logo';
 
 interface AuthModalProps {
   isOpen: boolean;
