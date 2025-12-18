@@ -5,7 +5,7 @@ import {
   Loader2, LogOut, X, Menu, Trash2, Zap, 
   History, Calendar, LayoutGrid, Plus, Info, CheckCircle2, XCircle,
   FileText, Home as HomeIcon, Smartphone, Settings, Palette, CreditCard,
-  ShieldCheck, BarChart3
+  ShieldCheck, BarChart3, ArrowUpRight
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { VisagismAnalysis } from './components/VisagismAnalysis';
@@ -43,6 +43,13 @@ export default function App() {
     setHistory(userHistory);
   }, []);
 
+  const checkPremiumStatus = (email: string | null, uid: string) => {
+    if (!email) return false;
+    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase());
+    const hasPaid = localStorage.getItem(`premium_${uid}`) === 'true';
+    return isAdmin || hasPaid;
+  };
+
   useEffect(() => {
     const fastSession = localStorage.getItem('vizu_session_user');
     if (fastSession) {
@@ -57,10 +64,7 @@ export default function App() {
         });
         setShowLanding(false);
         loadHistory(cachedUser.id);
-        
-        // ADMINS SÃO SEMPRE PREMIUM
-        const isAdmin = ADMIN_EMAILS.includes(cachedUser.email?.toLowerCase());
-        setIsPremium(isAdmin || localStorage.getItem(`premium_${cachedUser.id}`) === 'true');
+        setIsPremium(checkPremiumStatus(cachedUser.email, cachedUser.id));
       } catch (e) {
         console.error("Erro na sessão rápida");
       }
@@ -93,8 +97,7 @@ export default function App() {
     });
     setShowLanding(false);
     loadHistory(syncedUser.id);
-    const isAdmin = ADMIN_EMAILS.includes(syncedUser.email?.toLowerCase());
-    setIsPremium(isAdmin || localStorage.getItem(`premium_${syncedUser.id}`) === 'true');
+    setIsPremium(checkPremiumStatus(syncedUser.email, syncedUser.id));
   };
 
   const handleLogoutLocal = () => {
@@ -104,6 +107,7 @@ export default function App() {
     setIsMenuOpen(false);
     setShowAdmin(false);
     setShowHistoryView(false);
+    setIsPremium(false);
   };
 
   const handleLogout = async () => {
@@ -113,21 +117,44 @@ export default function App() {
 
   const handleDownloadPDF = async () => {
     if (!analysisResult) return;
-    setToast({ msg: "Gerando PDF...", type: 'info' });
+    setToast({ msg: "Gerando Dossiê Premium...", type: 'info' });
     try {
       await generateDossierPDF(analysisResult, user?.displayName || "Cliente VizuHalizando", selectedImages[0]);
-      setToast({ msg: "Dossiê pronto!", type: 'success' });
-    } catch (e) {
+      setToast({ msg: "PDF salvo com sucesso!", type: 'success' });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error: any) {
       setToast({ msg: "Erro ao gerar PDF.", type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleFeedback = async (outfitIdx: number, feedback: 'like' | 'dislike' | null) => {
+    if (currentAnaliseId) {
+      await db.updateAnaliseFeedback(currentAnaliseId, outfitIdx, feedback);
+      setHistory(prev => prev.map(item => 
+        item.id === currentAnaliseId 
+          ? { 
+              ...item, 
+              resultado_json: { 
+                ...item.resultado_json, 
+                sugestoes_roupa: item.resultado_json.sugestoes_roupa.map((s, i) => 
+                  i === outfitIdx ? { ...s, feedback } : s
+                ) 
+              } 
+            } 
+          : item
+      ));
     }
   };
 
   const runAnalysis = async () => {
     if (selectedImages.length === 0) {
-      setToast({ msg: "Selecione uma foto.", type: "error" });
+      setToast({ msg: "Envie uma foto facial para começar.", type: "error" });
+      setTimeout(() => setToast(null), 3000);
       return;
     }
     setIsAnalyzing(true);
+    setAnalysisResult(null);
     try {
       const cleanImages = selectedImages.map(img => img.split(',')[1]);
       const result = await analyzeImageWithGemini(cleanImages, metrics, targetEnvironment, userPreferences, user?.uid);
@@ -138,9 +165,21 @@ export default function App() {
         setHistory(prev => [newAnalise, ...prev]);
       }
     } catch (err: any) {
-      setToast({ msg: "Falha na análise técnica.", type: "error" });
+      setToast({ msg: "Erro técnico na análise IA.", type: "error" });
+      setTimeout(() => setToast(null), 3000);
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleManualUpgrade = () => {
+    if (user) {
+      localStorage.setItem(`premium_${user.uid}`, 'true');
+      setIsPremium(true);
+      setToast({ msg: "Acesso Premium Liberado!", type: 'success' });
+      setTimeout(() => setToast(null), 3000);
+    } else {
+      setShowAuth(true);
     }
   };
 
@@ -154,14 +193,20 @@ export default function App() {
       ) : (
         <div className="flex flex-col h-screen">
           <header className="bg-white border-b border-slate-100 px-6 py-4 flex justify-between items-center z-40 shrink-0">
-            <div className="flex items-center gap-3 cursor-pointer" onClick={() => { setShowHistoryView(false); setShowAdmin(false); setAnalysisResult(null); }}>
-              <Logo className="w-8 h-8" />
-              <h1 className="font-serif text-xl font-bold tracking-tight">VizuHalizando</h1>
+            <div className="flex items-center gap-4 cursor-pointer group" onClick={() => { setShowHistoryView(false); setShowAdmin(false); setAnalysisResult(null); }}>
+              <Logo className="w-9 h-9" />
+              <div className="flex flex-col">
+                <h1 className="font-serif text-xl font-bold tracking-tight leading-none">
+                  <span className="text-brand-graphite">Vizu</span>
+                  <span className="text-brand-gold">Halizando</span>
+                </h1>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital IA</span>
+              </div>
             </div>
             
             <div className="flex items-center gap-3">
-              {!isPremium && !showAdmin && (
-                <button onClick={() => { localStorage.setItem(`premium_${user?.uid}`, 'true'); setIsPremium(true); }} className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-white rounded-full text-xs font-bold animate-pulse">
+              {!isPremium && (
+                <button onClick={handleManualUpgrade} className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-white rounded-full text-[10px] font-bold animate-pulse hover:bg-brand-goldHover transition-all shadow-lg shadow-brand-gold/20">
                   <CreditCard size={14} /> UPGRADE PREMIUM
                 </button>
               )}
@@ -170,10 +215,10 @@ export default function App() {
                   <ShieldCheck size={20} />
                 </button>
               )}
-              <button onClick={() => { setShowHistoryView(!showHistoryView); setShowAdmin(false); }} className={`p-2.5 rounded-full transition-all ${showHistoryView ? 'bg-brand-gold text-white' : 'bg-slate-50 text-slate-600'}`}>
+              <button onClick={() => { setShowHistoryView(!showHistoryView); setShowAdmin(false); setAnalysisResult(null); }} className={`p-2.5 rounded-full transition-all ${showHistoryView ? 'bg-brand-gold text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:text-brand-graphite'}`}>
                 <History className="w-5 h-5" />
               </button>
-              <button onClick={() => setIsMenuOpen(true)} className="p-2.5 bg-brand-graphite text-white rounded-full"><Menu size={20} /></button>
+              <button onClick={() => setIsMenuOpen(true)} className="p-2.5 bg-brand-graphite text-white rounded-full shadow-lg hover:scale-110 transition-transform"><Menu size={20} /></button>
             </div>
           </header>
 
@@ -182,41 +227,60 @@ export default function App() {
                <AdminDashboard />
              ) : showHistoryView ? (
                <div className="w-full max-w-5xl animate-fade-in">
-                  <h2 className="text-3xl font-serif font-bold mb-8">Seu Histórico</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {history.map((item) => (
-                      <div key={item.id} className="bg-white rounded-3xl overflow-hidden shadow-sm border border-slate-100 cursor-pointer" onClick={() => { setAnalysisResult(item.resultado_json); setCurrentAnaliseId(item.id); setSelectedImages([item.foto_url]); setShowHistoryView(false); }}>
-                        <img src={item.foto_url} className="w-full aspect-[3/4] object-cover" />
-                        <div className="p-4"><p className="font-bold text-sm">{item.resultado_json.formato_rosto_detalhado}</p></div>
-                      </div>
-                    ))}
-                  </div>
+                  <h2 className="text-3xl font-serif font-bold mb-8 text-brand-graphite">Seu Histórico <span className="text-brand-gold italic">Sob Medida</span></h2>
+                  {history.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                      {history.map((item) => (
+                        <div key={item.id} className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group" onClick={() => { setAnalysisResult(item.resultado_json); setCurrentAnaliseId(item.id); setSelectedImages([item.foto_url]); setShowHistoryView(false); }}>
+                          <div className="relative aspect-[3/4] overflow-hidden">
+                            <img src={item.foto_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-brand-graphite/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                              <span className="text-white font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">Abrir Dossiê <ArrowUpRight size={14}/></span>
+                            </div>
+                          </div>
+                          <div className="p-6">
+                            <p className="font-bold text-brand-graphite text-lg">{item.resultado_json?.formato_rosto_detalhado || "Análise Facial"}</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">{new Date(item.data_analise).toLocaleDateString('pt-BR')}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-24 bg-white rounded-[40px] border border-dashed border-slate-200">
+                      <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200"><History size={40} /></div>
+                      <p className="text-slate-400 font-bold">Nenhuma consultoria anterior encontrada.</p>
+                      <button onClick={() => setShowHistoryView(false)} className="mt-4 px-6 py-2 bg-brand-gold text-white rounded-full text-xs font-bold uppercase tracking-widest hover:bg-brand-goldHover transition-colors">Nova Análise</button>
+                    </div>
+                  )}
                </div>
              ) : (
                <>
                  {!analysisResult && !isAnalyzing && (
                    <div className="w-full max-w-2xl animate-fade-in py-8">
                       <div className="text-center mb-10">
-                        <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6"><Sparkles size={40}/></div>
-                        <h2 className="text-4xl font-serif font-bold text-brand-graphite mb-3">O Atelier IA.</h2>
-                        <p className="text-slate-500 text-sm">A ciência do visagismo a um clique de distância.</p>
+                        <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6 shadow-xl shadow-brand-gold/10 border border-brand-gold/20"><Sparkles size={40}/></div>
+                        <h2 className="text-4xl font-serif font-bold text-brand-graphite mb-3 leading-tight">O Atelier <span className="italic text-brand-gold">Halizando</span></h2>
+                        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">Análise biométrica de precisão para elevar sua imagem ao próximo nível.</p>
                       </div>
 
-                      <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 mb-8 space-y-4">
-                        <div className="grid grid-cols-3 gap-4">
+                      <div className="bg-white p-8 rounded-[48px] shadow-2xl border border-slate-100 mb-8 space-y-8">
+                        <div className="grid grid-cols-3 gap-6">
                           {selectedImages.map((img, idx) => (
-                            <div key={idx} className="aspect-[3/4] rounded-2xl overflow-hidden relative border-2 border-slate-100">
-                              <img src={img} className="w-full h-full object-cover" />
-                              <button onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))} className="absolute top-2 right-2 p-1.5 bg-white/90 text-red-500 rounded-full"><Trash2 size={14}/></button>
+                            <div key={idx} className="aspect-[3/4] rounded-3xl overflow-hidden relative border-2 border-slate-100 shadow-md group">
+                              <img src={img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                              <button onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))} className="absolute top-2 right-2 p-2 bg-white/90 text-red-500 rounded-full shadow-lg hover:bg-red-500 hover:text-white transition-all transform hover:scale-110"><Trash2 size={12}/></button>
                             </div>
                           ))}
                           {selectedImages.length < 3 && (
-                            <label className="aspect-[3/4] rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50">
-                              <Plus className="text-slate-300" size={32} />
+                            <label className="aspect-[3/4] rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-brand-gold/40 transition-all group">
+                              <div className="p-4 bg-slate-50 rounded-full group-hover:bg-brand-gold/10 transition-colors">
+                                <Plus className="text-slate-300 group-hover:text-brand-gold transition-colors" size={32} />
+                              </div>
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-4 text-center px-4">Anexar Face</span>
                               <input type="file" className="hidden" multiple onChange={(e) => {
                                 const files = e.target.files;
                                 if (files) {
-                                  Array.from(files).forEach(f => {
+                                  Array.from(files).forEach((f: File) => {
                                     const r = new FileReader();
                                     r.onload = () => setSelectedImages(p => [...p, r.result as string]);
                                     r.readAsDataURL(f);
@@ -227,45 +291,58 @@ export default function App() {
                           )}
                         </div>
                         
-                        <div className="pt-4 border-t border-slate-50 grid grid-cols-2 gap-4">
-                           <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sua Altura</label>
-                              <input 
-                                type="text" 
-                                placeholder="Ex: 1.75" 
-                                value={metrics.height} 
-                                onChange={e => setMetrics({...metrics, height: e.target.value})}
-                                className="w-full p-3 bg-slate-50 rounded-xl text-sm border-none focus:ring-2 focus:ring-brand-gold" 
-                              />
+                        <div className="pt-8 border-t border-slate-50 grid grid-cols-2 gap-8">
+                           <div className="space-y-3">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Sua Altura</label>
+                              <div className="relative">
+                                <input 
+                                  type="text" 
+                                  placeholder="Ex: 1.75" 
+                                  value={metrics.height} 
+                                  onChange={e => setMetrics({...metrics, height: e.target.value})}
+                                  className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold transition-all shadow-inner" 
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] font-bold">M</span>
+                              </div>
                            </div>
-                           <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Estilo Desejado</label>
+                           <div className="space-y-3">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Intenção de Estilo</label>
                               <select 
                                 value={userPreferences.favoriteStyles[0] || ''} 
                                 onChange={e => setUserPreferences({...userPreferences, favoriteStyles: [e.target.value]})}
-                                className="w-full p-3 bg-slate-50 rounded-xl text-sm border-none focus:ring-2 focus:ring-brand-gold appearance-none"
+                                className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold appearance-none shadow-inner font-medium text-brand-graphite cursor-pointer"
                               >
-                                <option value="">Automático</option>
-                                <option value="Minimalista">Minimalista</option>
-                                <option value="Boho">Boho</option>
-                                <option value="Clássico">Clássico</option>
-                                <option value="Streetwear">Streetwear</option>
+                                <option value="">Automático IA</option>
+                                <option value="Minimalista">Quiet Luxury / Minimalista</option>
+                                <option value="Elegante">Elegante Contemporâneo</option>
+                                <option value="Streetwear">Streetwear Premium</option>
+                                <option value="Criativo">Editorial / Ousado</option>
                               </select>
                            </div>
                         </div>
                       </div>
 
-                      <button disabled={selectedImages.length === 0} onClick={runAnalysis} className="w-full py-5 bg-brand-graphite text-white rounded-2xl font-bold flex items-center justify-center gap-3 text-lg shadow-2xl active:scale-95 transition-all">
-                        <Zap className="w-5 h-5 text-brand-gold fill-brand-gold" /> Gerar Consultoria IA
+                      <button disabled={selectedImages.length === 0} onClick={runAnalysis} className="w-full py-6 bg-brand-graphite text-white rounded-[32px] font-bold flex items-center justify-center gap-4 text-xl shadow-2xl active:scale-[0.98] hover:shadow-brand-gold/20 transition-all disabled:opacity-50 group border border-white/10">
+                        <Zap className="w-6 h-6 text-brand-gold fill-brand-gold group-hover:scale-125 transition-transform" /> 
+                        <span>ANALISAR BIOMETRIA</span>
                       </button>
+                      <p className="text-center text-[10px] text-slate-400 mt-8 font-bold uppercase tracking-[0.3em] opacity-50">Private Label Style Engine • Version 3.1 Pro</p>
                    </div>
                  )}
 
                  {isAnalyzing && (
-                   <div className="flex-1 flex flex-col items-center justify-center gap-6">
-                      <Loader2 className="w-16 h-16 text-brand-gold animate-spin" />
-                      <p className="font-serif italic text-2xl animate-pulse">Tecendo seu Estilo...</p>
-                      <span className="text-xs text-slate-400 uppercase tracking-widest font-bold">Processando biometria facial</span>
+                   <div className="flex-1 flex flex-col items-center justify-center gap-10 animate-fade-in text-center max-w-sm">
+                      <div className="relative p-8">
+                        <div className="absolute inset-0 border-2 border-brand-gold/20 rounded-full animate-ping"></div>
+                        <Loader2 className="w-24 h-24 text-brand-gold animate-spin" />
+                        <Sparkles className="absolute inset-0 m-auto text-brand-graphite w-8 h-8" />
+                      </div>
+                      <div className="space-y-3">
+                        <h3 className="font-serif italic text-4xl text-brand-graphite">Tecendo sua Identidade...</h3>
+                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em] animate-pulse">
+                          Harmonização de Proporções Áureas
+                        </p>
+                      </div>
                    </div>
                  )}
                  
@@ -274,8 +351,8 @@ export default function App() {
                      result={analysisResult} 
                      isPremium={isPremium} 
                      userImage={selectedImages[0]}
-                     userName={user?.displayName || ""}
-                     onUpgrade={() => { localStorage.setItem(`premium_${user?.uid}`, 'true'); setIsPremium(true); }} 
+                     userName={user?.displayName || "Membro VizuHalizando"}
+                     onUpgrade={handleManualUpgrade} 
                      onClose={() => { setAnalysisResult(null); setCurrentAnaliseId(null); }}
                      onFeedback={handleFeedback}
                      onDownloadPDF={handleDownloadPDF}
@@ -287,26 +364,41 @@ export default function App() {
 
           {isMenuOpen && (
             <div className="fixed inset-0 z-50 flex justify-end">
-              <div className="absolute inset-0 bg-black/40" onClick={() => setIsMenuOpen(false)} />
-              <div className="relative w-80 h-full bg-white p-8 animate-slide-in-right shadow-2xl flex flex-col">
-                <button onClick={() => setIsMenuOpen(false)} className="absolute top-6 right-6 text-slate-300"><X/></button>
-                <div className="mb-10 flex items-center gap-4 border-b border-slate-50 pb-8">
-                  <div className="w-16 h-16 bg-brand-gold/10 rounded-2xl flex items-center justify-center overflow-hidden">
-                    {user?.photoURL ? <img src={user.photoURL} /> : <span className="font-bold text-2xl text-brand-gold">{user?.displayName?.[0]}</span>}
+              <div className="absolute inset-0 bg-brand-graphite/40 backdrop-blur-md" onClick={() => setIsMenuOpen(false)} />
+              <div className="relative w-85 h-full bg-white p-10 animate-slide-in-right shadow-[0_0_100px_rgba(0,0,0,0.2)] flex flex-col border-l border-slate-100 rounded-l-[40px]">
+                <button onClick={() => setIsMenuOpen(false)} className="absolute top-8 right-8 text-slate-300 hover:text-brand-graphite transition-colors p-2 hover:bg-slate-50 rounded-full"><X/></button>
+                
+                <div className="mb-12 flex items-center gap-5 border-b border-slate-50 pb-10">
+                  <div className="w-20 h-20 bg-brand-gold/10 rounded-[24px] flex items-center justify-center overflow-hidden border-2 border-brand-gold/20 shadow-xl group">
+                    {user?.photoURL ? <img src={user.photoURL} className="group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" /> : <span className="font-bold text-3xl text-brand-gold">{user?.displayName?.[0] || "?"}</span>}
                   </div>
                   <div>
-                    <p className="font-bold text-slate-800 leading-tight">{user?.displayName}</p>
-                    <p className="text-[9px] text-brand-gold font-bold uppercase tracking-widest mt-1">{isPremium ? 'PREMIUM' : 'FREE'}</p>
+                    <p className="font-serif text-2xl font-bold text-brand-graphite leading-tight">{user?.displayName || 'Visitante'}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                       <p className="text-[10px] text-brand-gold font-bold uppercase tracking-widest flex items-center gap-1 bg-brand-gold/5 px-3 py-1 rounded-full border border-brand-gold/10">
+                        {isPremium ? <><CheckCircle2 size={10}/> MEMBRO PREMIUM</> : 'MEMBRO FREE'}
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <nav className="space-y-2 flex-1">
-                  <button onClick={() => { setShowAdmin(false); setShowHistoryView(true); setIsMenuOpen(false); }} className="w-full text-left py-4 px-5 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-3"><LayoutGrid size={18}/> Meu Histórico</button>
+
+                <nav className="space-y-3 flex-1">
+                  <button onClick={() => { setShowAdmin(false); setShowHistoryView(false); setShowLanding(true); setIsMenuOpen(false); }} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-4 transition-all group">
+                    <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-brand-graphite group-hover:text-white transition-colors"><Smartphone size={20}/></div>
+                    Início do Atelier
+                  </button>
+                  <button onClick={() => { setShowAdmin(false); setShowHistoryView(true); setIsMenuOpen(false); }} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-4 transition-all group">
+                    <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-brand-gold group-hover:text-white transition-colors"><LayoutGrid size={20}/> Consultorias Salvas</button>
                   {user?.role === 'admin' && (
-                    <button onClick={() => { setShowAdmin(true); setShowHistoryView(false); setIsMenuOpen(false); }} className="w-full text-left py-4 px-5 rounded-2xl font-bold text-sm text-indigo-600 bg-indigo-50 flex items-center gap-3"><BarChart3 size={18}/> Gestão do Atelier</button>
+                    <button onClick={() => { setShowAdmin(true); setShowHistoryView(false); setIsMenuOpen(false); }} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-indigo-600 bg-indigo-50 flex items-center gap-4 transition-all mt-6 border border-indigo-100 group">
+                      <div className="p-2 bg-indigo-600 text-white rounded-xl"><ShieldCheck size={20}/></div>
+                      Gestão Administrativa
+                    </button>
                   )}
                 </nav>
-                <div className="pt-8 border-t border-slate-50">
-                  <button onClick={handleLogout} className="w-full py-4 bg-red-50 text-red-500 rounded-2xl font-bold text-sm flex items-center justify-center gap-3"><LogOut size={18}/> Sair</button>
+
+                <div className="pt-10 border-t border-slate-50">
+                  <button onClick={handleLogout} className="w-full py-5 bg-red-50 text-red-500 rounded-[24px] font-bold text-sm flex items-center justify-center gap-3 hover:bg-red-100 transition-colors shadow-sm"><LogOut size={18}/> Encerrar Sessão</button>
                 </div>
               </div>
             </div>
@@ -314,9 +406,11 @@ export default function App() {
 
           {showAuth && <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onMockLogin={() => {}} />}
           {toast && (
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-4 bg-white shadow-2xl rounded-2xl border border-slate-100 flex items-center gap-3 animate-fade-in-up">
-              {toast.type === 'success' ? <CheckCircle2 className="text-green-500"/> : <Loader2 className="text-brand-gold animate-spin"/>}
-              <span className="font-bold text-sm text-slate-700">{toast.msg}</span>
+            <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] px-8 py-5 bg-white shadow-[0_20px_60px_rgba(0,0,0,0.1)] rounded-[24px] border border-slate-100 flex items-center gap-4 animate-fade-in-up min-w-[280px]">
+              <div className={`p-2 rounded-full ${toast.type === 'success' ? 'bg-green-50 text-green-500' : toast.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-brand-gold/10 text-brand-gold'}`}>
+                {toast.type === 'success' ? <CheckCircle2 size={20}/> : toast.type === 'error' ? <XCircle size={20}/> : <Loader2 size={20} className="animate-spin"/>}
+              </div>
+              <span className="font-bold text-sm text-brand-graphite">{toast.msg}</span>
             </div>
           )}
         </div>
