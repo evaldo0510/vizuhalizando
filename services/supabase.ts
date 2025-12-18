@@ -1,12 +1,21 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // No ambiente de produção/SaaS, estas chaves vêm das variáveis de ambiente
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || '';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn("Supabase credentials not found. Ensure SUPABASE_URL and SUPABASE_ANON_KEY are set.");
+// Inicialização segura para evitar "supabaseUrl is required" crash
+let supabaseInstance: SupabaseClient | null = null;
+
+if (supabaseUrl && supabaseAnonKey && supabaseUrl !== '') {
+    try {
+        supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    } catch (e) {
+        console.error("Erro ao inicializar Supabase:", e);
+    }
+} else {
+    console.warn("Supabase não configurado. O sistema usará o Banco de Dados Local (LocalStorage) como fallback de desenvolvimento.");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = supabaseInstance;
