@@ -9,6 +9,7 @@ export interface Usuario {
   foto_perfil?: string;
   nivel_acesso: 'user' | 'admin';
   data_cadastro: string;
+  isPremium?: boolean;
 }
 
 export interface Analise {
@@ -19,18 +20,11 @@ export interface Analise {
   data_analise: string;
 }
 
-class HybridDatabase {
-  private isCloud(): boolean {
-    return !!supabase;
-  }
+const ADMIN_EMAILS = ['evaldo0510@gmail.com', 'aljariristartups@gmail.com'];
 
-  // --- MOCK LOGIC (FALLBACK) ---
-  private async hashPassword(password: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password + "vizu_salt_2025");
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+class HybridDatabase {
+  private isAdmin(email: string): boolean {
+    return ADMIN_EMAILS.includes(email.toLowerCase());
   }
 
   private getLocalTable<T>(tableName: string): T[] {
@@ -42,136 +36,129 @@ class HybridDatabase {
     localStorage.setItem(`vizu_db_${tableName}`, JSON.stringify(data));
   }
 
-  // --- PUBLIC METHODS ---
+  async syncGoogleUser(googleUser: any): Promise<Usuario> {
+    const email = googleUser.email;
+    const role = this.isAdmin(email) ? 'admin' : 'user';
+    const usuarios = this.getLocalTable<Usuario>('usuarios');
+    let user = usuarios.find(u => u.email === email);
+    
+    const userData: Usuario = {
+      id: googleUser.uid || googleUser.id,
+      nome: googleUser.displayName || googleUser.user_metadata?.full_name || "Usuário",
+      email: email,
+      foto_perfil: googleUser.photoURL || googleUser.user_metadata?.avatar_url,
+      nivel_acesso: role,
+      data_cadastro: user?.data_cadastro || new Date().toISOString()
+    };
 
-  async registerUser(nome: string, email: string, senha_plana: string, role: UserRole = 'client'): Promise<Usuario> {
-    if (this.isCloud()) {
-      const { data, error } = await supabase!.auth.signUp({
-        email,
-        password: senha_plana,
-        options: { data: { full_name: nome, role: role } }
-      });
-      if (error) throw error;
-      if (!data.user) throw new Error("Erro ao criar usuário.");
-      return {
-        id: data.user.id,
-        nome: data.user.user_metadata.full_name,
-        email: data.user.email!,
-        nivel_acesso: 'user',
-        data_cadastro: data.user.created_at
-      };
-    } else {
-      const usuarios = this.getLocalTable<any>('usuarios');
-      if (usuarios.find(u => u.email === email)) throw new Error('Email já cadastrado.');
-      
-      const newUser = {
-        id: Date.now().toString(),
-        nome,
-        email,
-        senha_hash: await this.hashPassword(senha_plana),
-        nivel_acesso: 'user',
-        data_cadastro: new Date().toISOString()
-      };
-      usuarios.push(newUser);
-      this.saveLocalTable('usuarios', usuarios);
-      this.setCurrentUser(newUser as any);
-      return newUser as any;
+    if (!user || user.nome !== userData.nome || user.foto_perfil !== userData.foto_perfil) {
+      const filteredUsers = usuarios.filter(u => u.email !== email);
+      this.saveLocalTable('usuarios', [...filteredUsers, userData]);
     }
-  }
 
-  async loginUser(email: string, senha_plana: string): Promise<Usuario> {
-    if (this.isCloud()) {
-      const { data, error } = await supabase!.auth.signInWithPassword({ email, password: senha_plana });
-      if (error) throw error;
-      if (!data.user) throw new Error("Credenciais inválidas.");
-      return {
-        id: data.user.id,
-        nome: data.user.user_metadata.full_name,
-        email: data.user.email!,
-        foto_perfil: data.user.user_metadata.avatar_url,
-        nivel_acesso: data.user.user_metadata.role === 'admin' ? 'admin' : 'user',
-        data_cadastro: data.user.created_at
-      };
-    } else {
-      const usuarios = this.getLocalTable<any>('usuarios');
-      const user = usuarios.find(u => u.email === email);
-      if (!user) throw new Error('Usuário não encontrado.');
-      const hashed = await this.hashPassword(senha_plana);
-      if (user.senha_hash !== hashed) throw new Error('Senha incorreta.');
-      this.setCurrentUser(user as any);
-      return user as any;
-    }
-  }
-
-  async logout() {
-    if (this.isCloud()) {
-      await supabase!.auth.signOut();
-    } else {
-      localStorage.removeItem('vizu_session_user');
-    }
+    this.setCurrentUser(userData);
+    return userData;
   }
 
   async saveAnalise(usuario_id: string, foto_url: string, resultado: AnalysisResult): Promise<Analise> {
-    if (this.isCloud()) {
-      const { data, error } = await supabase!
-        .from('analises')
-        .insert([{ usuario_id, foto_url, resultado_json: resultado, data_analise: new Date().toISOString() }])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    } else {
-      const analises = this.getLocalTable<Analise>('analises');
-      const newAnalise: Analise = {
-        id: Date.now(),
-        usuario_id,
-        foto_url,
-        resultado_json: resultado,
-        data_analise: new Date().toISOString()
-      };
-      analises.push(newAnalise);
+    const analises = this.getLocalTable<Analise>('analises');
+    const newAnalise: Analise = {
+      id: Date.now(),
+      usuario_id,
+      foto_url,
+      resultado_json: resultado,
+      data_analise: new Date().toISOString()
+    };
+    analises.push(newAnalise);
+    this.saveLocalTable('analises', analises);
+    return newAnalise;
+  }
+
+  /**
+   * Atualiza o feedback de um look específico dentro de uma análise.
+   */
+  async updateAnaliseFeedback(analiseId: number, outfitIdx: number, feedback: 'like' | 'dislike' | null): Promise<void> {
+    const analises = this.getLocalTable<Analise>('analises');
+    const index = analises.findIndex(a => a.id === analiseId);
+    if (index === -1) return;
+
+    const analise = analises[index];
+    if (analise.resultado_json.sugestoes_roupa[outfitIdx]) {
+      analise.resultado_json.sugestoes_roupa[outfitIdx].feedback = feedback;
+      analises[index] = analise;
       this.saveLocalTable('analises', analises);
-      return newAnalise;
     }
+  }
+
+  /**
+   * Gera um resumo textual das preferências do usuário baseado no histórico de feedbacks.
+   */
+  async getUserFeedbackSummary(usuario_id: string): Promise<string> {
+    const analises = await this.getUserAnalyses(usuario_id);
+    const likes: string[] = [];
+    const dislikes: string[] = [];
+
+    analises.forEach(a => {
+      a.resultado_json.sugestoes_roupa?.forEach(look => {
+        if (look.feedback === 'like') likes.push(`${look.titulo} (${look.detalhes.slice(0, 30)}...)`);
+        if (look.feedback === 'dislike') dislikes.push(`${look.titulo}`);
+      });
+    });
+
+    if (likes.length === 0 && dislikes.length === 0) return "Nenhum feedback prévio.";
+
+    return `
+      Histórico de Preferências:
+      - O usuário GOSTOU de: ${likes.join(', ')}.
+      - O usuário NÃO GOSTOU de: ${dislikes.join(', ')}.
+      Priorize elementos similares aos que ele gostou e evite os que ele rejeitou.
+    `;
   }
 
   async getUserAnalyses(usuario_id: string): Promise<Analise[]> {
-    if (this.isCloud()) {
-      const { data, error } = await supabase!
-        .from('analises')
-        .select('*')
-        .eq('usuario_id', usuario_id)
-        .order('data_analise', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    } else {
-      return this.getLocalTable<Analise>('analises')
-        .filter(a => a.usuario_id === usuario_id)
-        .sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime());
-    }
+    return this.getLocalTable<Analise>('analises')
+      .filter(a => a.usuario_id === usuario_id)
+      .sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime());
+  }
+
+  async getAdminStats() {
+    const usuarios = this.getLocalTable<Usuario>('usuarios');
+    const analises = this.getLocalTable<Analise>('analises');
+    const premiumUsers = usuarios.filter(u => localStorage.getItem(`premium_${u.id}`) === 'true');
+    const totalGanhos = premiumUsers.length * 29.90;
+
+    return {
+      totalUsuarios: usuarios.length,
+      totalAnalises: analises.length,
+      totalPremium: premiumUsers.length,
+      faturamentoTotal: totalGanhos,
+      usuarios: usuarios.map(u => ({
+        ...u,
+        isPremium: localStorage.getItem(`premium_${u.id}`) === 'true'
+      }))
+    };
   }
 
   async getCurrentUser(): Promise<Usuario | null> {
-    if (this.isCloud()) {
-      const { data: { user } } = await supabase!.auth.getUser();
-      if (!user) return null;
-      return {
-        id: user.id,
-        nome: user.user_metadata.full_name,
-        email: user.email!,
-        foto_perfil: user.user_metadata.avatar_url,
-        nivel_acesso: user.user_metadata.role === 'admin' ? 'admin' : 'user',
-        data_cadastro: user.created_at
-      };
-    } else {
-      const data = localStorage.getItem('vizu_session_user');
-      return data ? JSON.parse(data) : null;
+    const data = localStorage.getItem('vizu_session_user');
+    if (!data) return null;
+    try {
+      return JSON.parse(data);
+    } catch {
+      return null;
     }
   }
 
-  private setCurrentUser(user: Usuario | null) {
-      if (user) localStorage.setItem('vizu_session_user', JSON.stringify(user));
-      else localStorage.removeItem('vizu_session_user');
+  setCurrentUser(user: Usuario | null) {
+      if (user) {
+        localStorage.setItem('vizu_session_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('vizu_session_user');
+      }
+  }
+
+  async logout() {
+    this.setCurrentUser(null);
   }
 }
 
