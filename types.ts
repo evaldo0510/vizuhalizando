@@ -58,9 +58,11 @@ export interface OutfitSuggestion {
   feedback?: 'like' | 'dislike' | null;
 }
 
+// Added accuracy_estimate to QualityCheck interface to resolve TS error
 export interface QualityCheck {
   valid: boolean;
   reason: string;
+  accuracy_estimate: number;
 }
 
 export type SkinTone = 'Quente' | 'Frio' | 'Neutro' | 'Oliva' | 'Pardo Oliva' | 'Negro Oliva';

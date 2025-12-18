@@ -6,7 +6,7 @@ import {
   Filter, Sun, ThumbsUp, ThumbsDown,
   Download, Wand2, Loader2, UserCheck, Tag, BookOpen,
   Zap, ZoomIn, Maximize2, Move, FileImage, Check, RefreshCw, Coins, Code, Share2, FileCode,
-  User, Layers, Eye, Smartphone, Copy, ExternalLink
+  User, Layers, Eye, Smartphone, Copy, ExternalLink, AlertTriangle, ShieldAlert
 } from 'lucide-react';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import type { AnalysisResult, OutfitSuggestion } from '../types';
@@ -184,9 +184,29 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
     }).map((look) => ({ ...look, originalIdx: localOutfits.findIndex(l => l === look) }));
   }, [localOutfits, occasionFilter]);
 
+  const qualityIssue = result.quality_check && !result.quality_check.valid;
+
   return (
     <div className="w-full max-w-[1440px] bg-white animate-fade-in flex flex-col relative min-h-screen">
       
+      {/* BANNER DE QUALIDADE DA IMAGEM */}
+      {qualityIssue && (
+        <div className="bg-amber-50 border-b border-amber-100 px-12 py-4 flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in">
+           <div className="flex items-center gap-4">
+              <div className="p-2 bg-amber-500 text-white rounded-full">
+                 <AlertTriangle size={20} />
+              </div>
+              <div>
+                 <p className="text-xs font-black text-amber-800 uppercase tracking-widest">Alerta de Integridade Biométrica</p>
+                 <p className="text-sm text-amber-600 font-medium">{result.quality_check?.reason || "Imagem com baixa nitidez ou iluminação detectada."} Precisão estimada: <span className="font-black">{result.quality_check?.accuracy_estimate || "70"}%</span></p>
+              </div>
+           </div>
+           <button onClick={onClose} className="px-6 py-2 bg-amber-500 text-white rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all flex items-center gap-2">
+              <RefreshCw size={14} /> Refazer Scan de Alta Qualidade
+           </button>
+        </div>
+      )}
+
       {/* MODAL STUDIO DE EXPORTAÇÃO COM PREVIEWS VISUAIS */}
       {expandedLook && (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center p-0 md:p-8 animate-fade-in">
@@ -275,8 +295,14 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                     <h1 className="text-7xl font-serif font-bold text-brand-graphite leading-[1.1]">Sua essência,<br/><span className="text-brand-gold italic">mapeada.</span></h1>
                     <p className="text-xl text-slate-500 font-light leading-relaxed max-w-xl">Uma análise técnica baseada na biometria facial e corporal para criar uma identidade visual autêntica.</p>
                 </div>
-                <div className="bg-slate-50 p-10 rounded-[40px] border border-slate-100 flex flex-col justify-between hover:border-brand-gold/30 transition-all shadow-sm">
-                    <div><p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Formato de Rosto</p><h4 className="text-2xl font-serif font-bold text-brand-graphite">{result.formato_rosto_detalhado}</h4></div>
+                <div className={`p-10 rounded-[40px] border flex flex-col justify-between transition-all shadow-sm ${qualityIssue ? 'bg-amber-50/50 border-amber-200' : 'bg-slate-50 border-slate-100 hover:border-brand-gold/30'}`}>
+                    <div>
+                      <div className="flex justify-between items-center mb-4">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Formato de Rosto</p>
+                        {qualityIssue && <ShieldAlert size={14} className="text-amber-500" />}
+                      </div>
+                      <h4 className="text-2xl font-serif font-bold text-brand-graphite">{result.formato_rosto_detalhado}</h4>
+                    </div>
                     <div className="pt-6 border-t border-slate-200 flex items-center justify-between"><span className="text-[10px] font-bold text-brand-gold uppercase tracking-widest">Simetria Detectada</span><div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-brand-gold"><UserCheck size={20}/></div></div>
                 </div>
                 <div className="bg-brand-graphite p-10 rounded-[40px] shadow-2xl flex flex-col justify-between text-white border border-white/10 group transition-all hover:scale-[1.02]">

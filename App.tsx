@@ -38,6 +38,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showHistoryView, setShowHistoryView] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const checkPremiumStatus = useCallback((email: string | null, uid: string) => {
     if (!email) return false;
@@ -65,27 +66,34 @@ export default function App() {
 
   useEffect(() => {
     const init = async () => {
-      const cachedUser = await db.getCurrentUser();
-      if (cachedUser) {
-        setUser(cachedUser);
-        setShowLanding(false);
-        loadHistory(cachedUser.id);
-        setIsPremium(checkPremiumStatus(cachedUser.email, cachedUser.id));
-      }
+      try {
+        const cachedUser = await db.getCurrentUser();
+        if (cachedUser) {
+          setUser(cachedUser);
+          setShowLanding(false);
+          loadHistory(cachedUser.id);
+          setIsPremium(checkPremiumStatus(cachedUser.email, cachedUser.id));
+        }
 
-      if (supabase) {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session?.user) handleUserSync(session.user);
-        });
-
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (supabase) {
+          const { data: { session } } = await supabase.auth.getSession();
           if (session?.user) {
-            handleUserSync(session.user);
-          } else if (event === 'SIGNED_OUT') {
-            handleLogoutLocal();
+            await handleUserSync(session.user);
           }
-        });
-        return () => subscription.unsubscribe();
+
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (session?.user) {
+              await handleUserSync(session.user);
+            } else if (event === 'SIGNED_OUT') {
+              handleLogoutLocal();
+            }
+          });
+          return () => subscription.unsubscribe();
+        }
+      } catch (e) {
+        console.error("App init error:", e);
+      } finally {
+        setIsInitializing(false);
       }
     };
     init();
@@ -188,7 +196,6 @@ export default function App() {
       const cleanImages = selectedImages.map(img => img.split(',')[1] || img);
       const result = await analyzeImageWithGemini(cleanImages, metrics, targetEnvironment, userPreferences, user?.id);
       
-      // ALERAÇÃO DE QUALIDADE: Mostramos aviso mas NÃO bloqueamos a exibição. O Atelier agora é resiliente.
       if (!result.quality_check?.valid) {
          setToast({ msg: "IA detectou baixa nitidez. O Atelier usará extrapolação neural.", type: "info" });
          setTimeout(() => setToast(null), 5000);
@@ -221,6 +228,10 @@ export default function App() {
     }
   };
 
+  if (isInitializing) {
+    return null; 
+  }
+
   return (
     <div className="min-h-screen bg-brand-bg text-brand-graphite font-sans overflow-x-hidden">
       {showLanding && !user ? (
@@ -238,7 +249,7 @@ export default function App() {
                   <span className="text-brand-graphite">Vizu</span>
                   <span className="text-brand-gold">Halizando</span>
                 </h1>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital v4.0</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital v4.8</span>
               </div>
             </div>
             
@@ -316,87 +327,97 @@ export default function App() {
              ) : (
                <>
                  {!analysisResult && !isAnalyzing && (
-                   <div className="w-full max-w-2xl animate-fade-in py-8">
+                   <div className="w-full max-w-5xl animate-fade-in py-8 px-4 flex flex-col items-center">
                       <div className="text-center mb-10">
                         <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6 shadow-xl shadow-brand-gold/10 border border-brand-gold/20"><Sparkles size={40}/></div>
-                        <h2 className="text-4xl font-serif font-bold text-brand-graphite mb-3 leading-tight">Inicie sua <span className="italic text-brand-gold">Transformação</span></h2>
+                        <h2 className="text-4xl md:text-5xl font-serif font-bold text-brand-graphite mb-3 leading-tight">Inicie sua <span className="italic text-brand-gold">Transformação</span></h2>
                         <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium leading-relaxed">Mapeamento biométrico avançado para curadoria de imagem profissional.</p>
                       </div>
 
-                      <div className="bg-white p-10 rounded-[48px] shadow-2xl border border-slate-100 mb-8 space-y-10">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                           <div className="space-y-4">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Foto Frontal</label>
-                              {selectedImages[0] ? (
-                                <div className="aspect-[3/4] rounded-[36px] overflow-hidden relative border-4 border-slate-50 shadow-2xl group">
-                                  <img src={selectedImages[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                                  <button onClick={() => setSelectedImages([])} className="absolute top-4 right-4 p-3 bg-white/90 text-red-500 rounded-full shadow-xl hover:bg-red-500 hover:text-white transition-all transform hover:scale-110"><Trash2 size={16}/></button>
-                                </div>
-                              ) : (
-                                <div className="grid grid-cols-1 gap-4 h-[320px]">
-                                  <button 
-                                    onClick={() => setShowCamera(true)}
-                                    className="h-full rounded-[36px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-brand-gold/40 transition-all group"
-                                  >
-                                    <div className="p-6 bg-brand-gold/10 rounded-full group-hover:scale-110 transition-transform shadow-sm">
-                                      <Camera className="text-brand-gold" size={32} />
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Capturar Agora</span>
-                                  </button>
-                                  <label className="h-12 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
-                                    <Upload size={14} className="text-slate-400" />
-                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Upload de Arquivo</span>
-                                    <input type="file" className="hidden" onChange={(e) => {
-                                      const f = e.target.files?.[0];
-                                      if (f) {
-                                        const r = new FileReader();
-                                        r.onload = () => setSelectedImages([r.result as string]);
-                                        r.readAsDataURL(f);
-                                      }
-                                    }} />
-                                  </label>
-                                </div>
-                              )}
+                      <div className="w-full bg-white p-6 md:p-12 rounded-[48px] shadow-2xl border border-slate-100 mb-8 overflow-hidden">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-start">
+                           {/* Lado Esquerdo: Foto */}
+                           <div className="space-y-4 w-full">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2 block">Foto Frontal</label>
+                              <div className="w-full aspect-[3/4] relative">
+                                {selectedImages[0] ? (
+                                  <div className="w-full h-full rounded-[36px] overflow-hidden relative border-4 border-slate-50 shadow-2xl group">
+                                    <img src={selectedImages[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                                    <button onClick={() => setSelectedImages([])} className="absolute top-4 right-4 p-3 bg-white/90 text-red-500 rounded-full shadow-xl hover:bg-red-500 hover:text-white transition-all transform hover:scale-110 z-20"><Trash2 size={16}/></button>
+                                  </div>
+                                ) : (
+                                  <div className="w-full h-full flex flex-col gap-4">
+                                    <button 
+                                      onClick={() => setShowCamera(true)}
+                                      className="flex-1 rounded-[36px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-brand-gold/40 transition-all group"
+                                    >
+                                      <div className="p-6 bg-brand-gold/10 rounded-full group-hover:scale-110 transition-transform shadow-sm">
+                                        <Camera className="text-brand-gold" size={32} />
+                                      </div>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Capturar Agora</span>
+                                    </button>
+                                    <label className="h-16 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors shrink-0">
+                                      <Upload size={18} className="text-slate-400" />
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload de Arquivo</span>
+                                      <input type="file" className="hidden" onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) {
+                                          const r = new FileReader();
+                                          r.onload = () => setSelectedImages([r.result as string]);
+                                          r.readAsDataURL(f);
+                                        }
+                                      }} />
+                                    </label>
+                                  </div>
+                                )}
+                              </div>
                            </div>
 
-                           <div className="space-y-8 py-4">
+                           {/* Lado Direito: Parâmetros */}
+                           <div className="space-y-8 h-full flex flex-col justify-center">
                               <div className="space-y-3">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Sua Altura</label>
-                                <div className="relative">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2 block">Sua Altura</label>
+                                <div className="relative group">
                                   <input 
                                     type="text" 
                                     placeholder="Ex: 1.75" 
                                     value={metrics.height} 
                                     onChange={e => setMetrics({...metrics, height: e.target.value})}
-                                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold transition-all shadow-inner font-bold" 
+                                    className="w-full p-5 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold transition-all shadow-inner font-bold text-brand-graphite" 
                                   />
-                                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] font-bold">METROS</span>
+                                  <span className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] font-bold uppercase tracking-widest">METROS</span>
                                 </div>
                               </div>
                               <div className="space-y-3">
-                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Objetivo do Estilo</label>
-                                <select 
-                                  value={userPreferences.favoriteStyles[0] || ''} 
-                                  onChange={e => setUserPreferences({...userPreferences, favoriteStyles: [e.target.value]})}
-                                  className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold appearance-none shadow-inner font-bold text-brand-graphite cursor-pointer"
-                                >
-                                  <option value="">Detecção Automática</option>
-                                  <option value="Minimalista">Minimalista / Luxo Silencioso</option>
-                                  <option value="Elegante">Elegante Executivo</option>
-                                  <option value="Criativo">Criativo / Fashionista</option>
-                                  <option value="Esportivo">Esportivo / Athleisure</option>
-                                </select>
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2 block">Objetivo do Estilo</label>
+                                <div className="relative">
+                                  <select 
+                                    value={userPreferences.favoriteStyles[0] || ''} 
+                                    onChange={e => setUserPreferences({...userPreferences, favoriteStyles: [e.target.value]})}
+                                    className="w-full p-5 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold appearance-none shadow-inner font-bold text-brand-graphite cursor-pointer pr-12"
+                                  >
+                                    <option value="">Detecção Automática</option>
+                                    <option value="Minimalista">Minimalista / Luxo Silencioso</option>
+                                    <option value="Elegante">Elegante Executivo</option>
+                                    <option value="Criativo">Criativo / Fashionista</option>
+                                    <option value="Esportivo">Esportivo / Athleisure</option>
+                                  </select>
+                                  <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
+                                    <ChevronRight className="rotate-90" size={16} />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="p-8 bg-slate-50 rounded-[32px] border border-slate-100 shadow-inner">
-                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-                                   Status: {isPremium ? 'Membro Premium' : `${user?.creditos || 0} Créditos Disponíveis`}.
+                              <div className="p-8 bg-slate-50 rounded-[32px] border border-slate-100 shadow-inner flex flex-col items-center justify-center gap-3">
+                                 <Coins size={20} className="text-brand-gold" />
+                                 <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed text-center">
+                                   Status: {isPremium ? <span className="text-indigo-500">Atelier Pro Ativo</span> : <><span className="text-brand-graphite">{user?.creditos || 0}</span> Créditos Disponíveis</>}
                                  </p>
                               </div>
                            </div>
                         </div>
                       </div>
 
-                      <button disabled={selectedImages.length === 0} onClick={runAnalysis} className="w-full py-6 bg-brand-graphite text-white rounded-[32px] font-bold flex items-center justify-center gap-4 text-xl shadow-2xl active:scale-[0.98] hover:shadow-brand-gold/20 transition-all disabled:opacity-50 group border border-white/10">
+                      <button disabled={selectedImages.length === 0} onClick={runAnalysis} className="w-full py-7 bg-brand-graphite text-white rounded-[32px] font-bold flex items-center justify-center gap-4 text-xl shadow-2xl active:scale-[0.98] hover:shadow-brand-gold/30 transition-all disabled:opacity-50 group border border-white/10 mt-4">
                         <Zap className="w-6 h-6 text-brand-gold fill-brand-gold group-hover:scale-125 transition-transform" /> 
                         <span>INICIAR CONSULTORIA</span>
                       </button>
@@ -442,7 +463,7 @@ export default function App() {
                 
                 <div className="mb-14 flex items-center gap-6 border-b border-slate-50 pb-12">
                   <div className="w-24 h-24 bg-brand-gold/10 rounded-[32px] flex items-center justify-center overflow-hidden border-2 border-brand-gold/20 shadow-xl">
-                    {user?.foto_perfil ? <img src={user.foto_perfil} referrerPolicy="no-referrer" /> : <span className="font-bold text-4xl text-brand-gold">{user?.nome?.[0] || "?"}</span>}
+                    {user?.foto_perfil ? <img src={user.foto_perfil} referrerPolicy="no-referrer" className="w-full h-full object-cover" /> : <span className="font-bold text-4xl text-brand-gold">{user?.nome?.[0] || "?"}</span>}
                   </div>
                   <div>
                     <p className="font-serif text-3xl font-bold text-brand-graphite leading-tight">{user?.nome || 'Convidado'}</p>

@@ -1,10 +1,19 @@
- 
+
 import { GoogleGenAI, Type } from "@google/genai";
-import { AnalysisResult, StoreLocation } from "../types";
+import { AnalysisResult } from "../types";
 
 const analysisSchema: any = {
   type: Type.OBJECT,
   properties: {
+    quality_check: {
+      type: Type.OBJECT,
+      properties: {
+        valid: { type: Type.BOOLEAN },
+        reason: { type: Type.STRING },
+        accuracy_estimate: { type: Type.INTEGER }
+      },
+      required: ["valid", "accuracy_estimate"]
+    },
     genero: { type: Type.STRING, enum: ["Masculino", "Feminino"] },
     formato_rosto_detalhado: { type: Type.STRING, enum: ['Oval', 'Redondo', 'Quadrado', 'Retangular', 'Triangular', 'Triângulo Invertido', 'Hexagonal', 'Coração'] },
     biotipo: { type: Type.STRING },
@@ -49,32 +58,44 @@ const analysisSchema: any = {
       }
     }
   },
-  required: ['genero', 'formato_rosto_detalhado', 'biotipo', 'analise_facial', 'paleta_cores', 'sugestoes_roupa']
+  required: ['quality_check', 'genero', 'formato_rosto_detalhado', 'biotipo', 'analise_facial', 'paleta_cores', 'sugestoes_roupa']
 };
 
-export const analyzeImageWithGemini = async (base64Image: string, metrics: { height: string, weight: string }): Promise<AnalysisResult> => {
+export const analyzeImageWithGemini = async (
+  base64Images: string[], 
+  metrics: { height: string, weight: string },
+  environment?: string,
+  preferences?: any,
+  userId?: string
+): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  const prompt = `Atue como Teodoro, o mestre supremo de visagismo e consultoria de imagem para o mercado Triple-A.
+  
+  const mainImage = base64Images[0].includes(',') ? base64Images[0].split(',')[1] : base64Images[0];
+
+  const prompt = `Atue como um consultor de visagismo de luxo e mestre em colorimetria.
   Dados Biométricos: Altura ${metrics.height}m, Peso ${metrics.weight}kg.
+  Contexto: ${environment || 'Geral'}.
   
   TAREFAS:
-  1. Analise tecnicamente a estrutura óssea facial e o biotipo corporal pela foto.
-  2. Determine o subtom de pele exato para coloração pessoal.
-  3. REGRA INVIOLÁVEL: Sugira exatamente 10 looks completos, variando entre Business Elite, Casual Luxo, Gala, e Weekend Avant-Garde.
+  1. Analise tecnicamente a estrutura óssea facial e o biotipo corporal.
+  2. Determine o subtom de pele exato. 
+  3. REGRA CROMÁTICA: Na paleta de cores, os nomes das cores devem seguir o padrão: "Nome da Cor (By Teodoro)".
+  4. Sugira exatamente 10 looks completos e luxuosos.
   
-  Retorne os dados estritamente no formato JSON para processamento sistêmico.`;
+  Retorne em JSON. SEJA INSTANTÂNEO.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: {
       parts: [
         { text: prompt },
-        { inlineData: { mimeType: 'image/jpeg', data: base64Image.split(',')[1] } }
+        { inlineData: { mimeType: 'image/jpeg', data: mainImage } }
       ]
     },
     config: {
       responseMimeType: 'application/json',
-      responseSchema: analysisSchema
+      responseSchema: analysisSchema,
+      thinkingConfig: { thinkingBudget: 0 } // Velocidade máxima sem delays de raciocínio
     }
   });
 
@@ -89,18 +110,25 @@ export const analyzeImageWithGemini = async (base64Image: string, metrics: { hei
   throw new Error("Erro na consultoria técnica.");
 };
 
-export const editImageWithGemini = async (base64Image: string, lookDetails: string): Promise<string> => {
+export const generateVisualEdit = async (
+  base64Image: string, 
+  type: string, 
+  title: string, 
+  details: string, 
+  context: string, 
+  extra: string
+): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
-  // O "CÓDIGO" DA IMAGEM PERFEITA (EDITORIAL MASTER PROMPT)
+  const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+  const lookDetails = `${title}: ${details}. ${context}. ${extra}`;
+
   const masterPrompt = `
-    PHOTOREALISTIC FASHION EDITORIAL RENDER (8K):
-    1. IDENTITY LOCK: The person in the output MUST have the EXACT same face, eyes, bone structure, and skin texture as the provided image. NO CHANGES TO THE SUBJECT'S IDENTITY.
-    2. MODEL POSING: Place the subject in a professional editorial model pose (high-fashion stance, confident gaze, leaning or walking).
-    3. THE ATTIRE: Render the person wearing a luxury, perfectly-tailored version of this outfit: ${lookDetails}. Fabrics must show high-end texture (crease-free wool, organic silk, fine leather).
-    4. STUDIO SETTING: Place them in a minimalist luxury Milan studio with soft shadow depth or a Parisian street at dawn.
-    5. LIGHTING: Cinematic Rembrandt lighting with soft bounce. Professional color grading (Vogue/Harper's Bazaar style).
-    6. GEAR: Shot on Phase One XF, 80mm lens, ultra-sharp focus on the subject with creamy bokeh background.
+    ULTRA-REALISTIC PHOTOREALISTIC FASHION RENDER (8K):
+    Subject MUST have the EXACT facial features and eyes as the provided image.
+    Dynamic model pose, high-luxury tailoring for: ${lookDetails}.
+    Luxury Studio environment, Cinematic lighting, Phase One XF quality.
+    NO DISTORTIONS, NATURAL TEXTURES.
   `;
 
   const response = await ai.models.generateContent({
@@ -108,19 +136,17 @@ export const editImageWithGemini = async (base64Image: string, lookDetails: stri
     contents: {
       parts: [
         { text: masterPrompt },
-        { inlineData: { mimeType: 'image/jpeg', data: base64Image.split(',')[1] } }
+        { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
       ]
     },
     config: {
-        imageConfig: {
-            aspectRatio: "3:4"
-        }
+        imageConfig: { aspectRatio: "3:4" }
     }
   });
 
   const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
   if (part?.inlineData) {
-    return `data:image/png;base64,${part.inlineData.data}`;
+    return part.inlineData.data;
   }
   throw new Error("Falha ao esculpir a imagem editorial.");
 };

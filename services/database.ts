@@ -31,13 +31,18 @@ export interface CreditPackage {
 const ADMIN_EMAILS = ['evaldo0510@gmail.com', 'aljariristartups@gmail.com'];
 
 class HybridDatabase {
-  private isAdmin(email: string): boolean {
+  private isAdmin(email: string = ''): boolean {
     return ADMIN_EMAILS.includes(email.toLowerCase());
   }
 
   private getLocalTable<T>(tableName: string): T[] {
-    const data = localStorage.getItem(`vizu_db_${tableName}`);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(`vizu_db_${tableName}`);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error(`Erro ao ler tabela ${tableName}`, e);
+      return [];
+    }
   }
 
   private saveLocalTable<T>(tableName: string, data: T[]) {
@@ -45,7 +50,7 @@ class HybridDatabase {
   }
 
   async syncGoogleUser(googleUser: any): Promise<Usuario> {
-    const email = googleUser.email;
+    const email = googleUser.email || '';
     const role = this.isAdmin(email) ? 'admin' : 'user';
     const usuarios = this.getLocalTable<Usuario>('usuarios');
     let user = usuarios.find(u => u.email === email);
@@ -60,11 +65,8 @@ class HybridDatabase {
       creditos: user ? user.creditos : 1 
     };
 
-    if (!user || user.nome !== userData.nome || user.foto_perfil !== userData.foto_perfil) {
-      const filteredUsers = usuarios.filter(u => u.email !== email);
-      this.saveLocalTable('usuarios', [...filteredUsers, userData]);
-    }
-
+    const filteredUsers = usuarios.filter(u => u.email !== email);
+    this.saveLocalTable('usuarios', [...filteredUsers, userData]);
     this.setCurrentUser(userData);
     return userData;
   }
@@ -74,13 +76,15 @@ class HybridDatabase {
     const userIdx = usuarios.findIndex(u => u.id === userId);
     if (userIdx === -1) return false;
 
+    const user = usuarios[userIdx];
     const isPremium = localStorage.getItem(`premium_${userId}`) === 'true';
-    if (isPremium || this.isAdmin(usuarios[userIdx].email)) return true;
+    if (isPremium || this.isAdmin(user.email)) return true;
 
-    if (usuarios[userIdx].creditos > 0) {
-      usuarios[userIdx].creditos -= 1;
+    if (user.creditos > 0) {
+      user.creditos -= 1;
+      usuarios[userIdx] = user;
       this.saveLocalTable('usuarios', usuarios);
-      this.setCurrentUser(usuarios[userIdx]);
+      this.setCurrentUser(user);
       return true;
     }
     return false;
@@ -127,63 +131,10 @@ class HybridDatabase {
     }
   }
 
-  async getUserFeedbackSummary(usuario_id: string): Promise<string> {
-    const analises = await this.getUserAnalyses(usuario_id);
-    const likes: string[] = [];
-    const dislikes: string[] = [];
-
-    analises.forEach(a => {
-      a.resultado_json.sugestoes_roupa?.forEach(look => {
-        if (look.feedback === 'like') likes.push(`${look.titulo} (${look.detalhes.slice(0, 30)}...)`);
-        if (look.feedback === 'dislike') dislikes.push(`${look.titulo}`);
-      });
-    });
-
-    if (likes.length === 0 && dislikes.length === 0) return "Nenhum feedback prévio.";
-
-    return `
-      Histórico de Preferências:
-      - O usuário GOSTOU de: ${likes.join(', ')}.
-      - O usuário NÃO GOSTOU de: ${dislikes.join(', ')}.
-    `;
-  }
-
   async getUserAnalyses(usuario_id: string): Promise<Analise[]> {
     return this.getLocalTable<Analise>('analises')
       .filter(a => a.usuario_id === usuario_id)
       .sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime());
-  }
-
-  // Métodos de Gerenciamento de Créditos (Admin)
-  async getCreditPackages(): Promise<CreditPackage[]> {
-    const packages = localStorage.getItem('vizu_credit_packages');
-    return packages ? JSON.parse(packages) : [
-      { id: '1', name: 'Single Pack', credits: 1, price: 4.90 },
-      { id: '2', name: 'Essential Pack', credits: 5, price: 14.90 },
-      { id: '3', name: 'Premium Pack', credits: 12, price: 24.90 }
-    ];
-  }
-
-  async saveCreditPackages(packages: CreditPackage[]): Promise<void> {
-    localStorage.setItem('vizu_credit_packages', JSON.stringify(packages));
-  }
-
-  async getAdminStats() {
-    const usuarios = this.getLocalTable<Usuario>('usuarios');
-    const analises = this.getLocalTable<Analise>('analises');
-    const premiumUsers = usuarios.filter(u => localStorage.getItem(`premium_${u.id}`) === 'true');
-    const totalGanhos = premiumUsers.length * 29.90; 
-
-    return {
-      totalUsuarios: usuarios.length,
-      totalAnalises: analises.length,
-      totalPremium: premiumUsers.length,
-      faturamentoTotal: totalGanhos,
-      usuarios: usuarios.map(u => ({
-        ...u,
-        isPremium: localStorage.getItem(`premium_${u.id}`) === 'true'
-      }))
-    };
   }
 
   async getCurrentUser(): Promise<Usuario | null> {
@@ -206,6 +157,37 @@ class HybridDatabase {
 
   async logout() {
     this.setCurrentUser(null);
+  }
+
+  async getAdminStats() {
+    const usuarios = this.getLocalTable<Usuario>('usuarios');
+    const analises = this.getLocalTable<Analise>('analises');
+    const premiumUsers = usuarios.filter(u => localStorage.getItem(`premium_${u.id}`) === 'true');
+    const totalGanhos = premiumUsers.length * 29.90; 
+
+    return {
+      totalUsuarios: usuarios.length,
+      totalAnalises: analises.length,
+      totalPremium: premiumUsers.length,
+      faturamentoTotal: totalGanhos,
+      usuarios: usuarios.map(u => ({
+        ...u,
+        isPremium: localStorage.getItem(`premium_${u.id}`) === 'true'
+      }))
+    };
+  }
+
+  async getCreditPackages(): Promise<CreditPackage[]> {
+    const packages = localStorage.getItem('vizu_credit_packages');
+    return packages ? JSON.parse(packages) : [
+      { id: '1', name: 'Single Pack', credits: 1, price: 4.90 },
+      { id: '2', name: 'Essential Pack', credits: 5, price: 14.90 },
+      { id: '3', name: 'Premium Pack', credits: 12, price: 24.90 }
+    ];
+  }
+
+  async saveCreditPackages(packages: CreditPackage[]): Promise<void> {
+    localStorage.setItem('vizu_credit_packages', JSON.stringify(packages));
   }
 }
 
