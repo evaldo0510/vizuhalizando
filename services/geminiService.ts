@@ -16,12 +16,12 @@ export const resizeBase64Image = (base64Str: string, maxWidth: number = 512, qua
         }
         const img = new Image();
         img.crossOrigin = "anonymous";
-        img.src = `data:image/jpeg;base64,${base64Str}`;
+        img.src = base64Str.startsWith('data:') ? base64Str : `data:image/jpeg;base64,${base64Str}`;
         img.onload = () => {
             let width = img.width;
             let height = img.height;
             if (width <= maxWidth) {
-                resolve(base64Str);
+                resolve(base64Str.split(',')[1] || base64Str);
                 return;
             }
             const ratio = maxWidth / width;
@@ -34,9 +34,9 @@ export const resizeBase64Image = (base64Str: string, maxWidth: number = 512, qua
             if (ctx) {
                 ctx.drawImage(img, 0, 0, width, height);
                 resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
-            } else resolve(base64Str);
+            } else resolve(base64Str.split(',')[1] || base64Str);
         };
-        img.onerror = () => resolve(base64Str);
+        img.onerror = () => resolve(base64Str.split(',')[1] || base64Str);
     });
 };
 
@@ -65,25 +65,26 @@ export const analyzeImageWithGemini = async (
   }
 
   const prompt = `
-    Atue como um Master Visagista Digital especializado na diversidade brasileira.
-    Analise a biometria facial e o subtom de pele das imagens.
+    Atue como um Master Visagista Digital e Consultor de Imagem Premium.
+    Analise a biometria facial, estrutura óssea e o subtom de pele das imagens enviadas.
     
-    FOCO ESPECIAL EM TONS DE PELE: 
-    Identifique com precisão nuances de peles brasileiras, especialmente tons 'Oliva', 'Pardo Oliva' e 'Negro Oliva' (subtons frios/neutros em peles quentes).
+    DETECÇÃO DE PELE: 
+    Identifique nuances complexas como tons 'Oliva', 'Pardo Oliva' e 'Negro Oliva'. Determine se o subtom é quente, frio ou neutro-oliva.
     
-    Contexto da ocasião: ${safeContext}.
-    Preferências do usuário: Estilos (${safeStyles}), Cores (${safeFavColors}), Evitar (${safeAvoidItems}).
-    Métricas do corpo: Altura ${metrics.height}m, Peso ${metrics.weight}kg.
+    REQUISITOS TÉCNICOS OBRIGATÓRIOS NO JSON:
+    1. No objeto 'visagismo', para 'cabelo' e 'barba_ou_make', inclua:
+       - 'produtos': Array de strings com nomes genéricos de produtos (ex: "Pomada Matte Alta Fixação", "Sérum Iluminador").
+       - 'tecnicas': Array de strings detalhando COMO aplicar (ex: "Secar o cabelo direcionando o ar de baixo para cima para volume").
+    2. Identifique o Gênero com base na imagem.
+    3. Sugira 'sugestoes_roupa' com 'estacao' e 'estilo'.
 
-    REFINAMENTO DE FEEDBACK PRÉVIO:
+    Contexto: ${safeContext}.
+    Métricas: Altura ${metrics.height}m.
+    Preferências: Estilos (${safeStyles}), Cores (${safeFavColors}).
+    
     ${feedbackContext}
 
-    INSTRUÇÕES PARA SUGESTÕES DE LOOKS:
-    - Inclua para cada look o campo 'estacao' (Primavera, Verão, Outono, Inverno ou Todas).
-    - Inclua o campo 'estilo' (Minimalista, Boho, Elegante, Streetwear, Criativo, etc.).
-    - Garanta que as cores sugeridas harmonizem com o tom de pele detectado.
-
-    Retorne estritamente JSON.
+    Retorne estritamente JSON no formato AnalysisResult.
   `;
 
   try {
@@ -98,11 +99,12 @@ export const analyzeImageWithGemini = async (
       config: { responseMimeType: "application/json" }
     });
 
-    if (!response.text) throw new Error("IA não retornou dados.");
-    return JSON.parse(response.text) as AnalysisResult;
+    const text = response.text;
+    if (!text) throw new Error("IA não retornou dados.");
+    return JSON.parse(text) as AnalysisResult;
   } catch (error) {
     console.error("Gemini Error:", error);
-    throw new Error("Falha na análise. Tente outra foto.");
+    throw new Error("Falha na análise. Verifique a iluminação e tente novamente.");
   }
 };
 
@@ -118,11 +120,11 @@ export const generateVisualEdit = async (
     const safeRefinement = sanitizeInput(userRefinement || "");
     
     const finalPrompt = `
-        Fashion photography, 8k, professional lighting.
-        The person in the photo is wearing: ${prompt}. 
-        Harmonization: ${visagismoParams}. 
-        User adjustment: ${safeRefinement}.
-        Maintain facial identity and original pose.
+        High-end fashion photography, studio lighting.
+        Person wearing: ${prompt}. 
+        Style context: ${visagismoParams}. 
+        Additional details: ${safeRefinement}.
+        Maintain identity, facial features and the same pose.
     `;
 
     try {
@@ -142,6 +144,6 @@ export const generateVisualEdit = async (
         return generatedPart.inlineData!.data;
     } catch (error) {
         console.error("Generation Error:", error);
-        throw new Error("Erro no provador virtual.");
+        throw new Error("Erro no processamento visual.");
     }
 };

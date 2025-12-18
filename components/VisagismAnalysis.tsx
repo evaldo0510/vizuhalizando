@@ -5,7 +5,7 @@ import {
   Scissors, Palette, Glasses, Shirt, Info, ArrowRight,
   Filter, Briefcase, Coffee, PartyPopper, LayoutGrid,
   Sun, Leaf, Snowflake, CloudRain, ThumbsUp, ThumbsDown,
-  Download, Wand2, Loader2, UserCheck, Calendar
+  Download, Wand2, Loader2, UserCheck, Calendar, Tag, BookOpen
 } from 'lucide-react';
 import type { AnalysisResult, OutfitSuggestion } from '../types';
 import { generateVisualEdit } from '../services/geminiService';
@@ -61,7 +61,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
     if (!isPremium || !userImage) return;
     setGeneratingLookIdx(idx);
     try {
-      const base64Clean = userImage.split(',')[1];
+      const base64Clean = userImage.split(',')[1] || userImage;
       const generatedBase64 = await generateVisualEdit(
         base64Clean,
         'outfit',
@@ -165,41 +165,100 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
         <section className="relative">
           <div className="flex items-center justify-between mb-8 md:mb-10">
             <div className="flex items-center gap-4">
-              <h3 className="font-serif text-2xl md:text-3xl font-bold text-brand-graphite">Harmonização Técnica</h3>
+              <h3 className="font-serif text-2xl md:text-3xl font-bold text-brand-graphite">Curadoria de Beleza</h3>
               {isPremium && <CheckCircle2 className="text-green-500" size={20} />}
             </div>
           </div>
 
-          <div className={`grid md:grid-cols-3 gap-6 md:gap-8 transition-all duration-700 ${!isPremium ? 'blur-2xl pointer-events-none opacity-40 grayscale' : ''}`}>
-            {/* Hair */}
-            <div className="p-6 md:p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl transition-all group">
-               <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-inner">
-                 <Scissors size={24}/>
+          <div className={`grid md:grid-cols-2 gap-8 transition-all duration-700 ${!isPremium ? 'blur-2xl pointer-events-none opacity-40 grayscale' : ''}`}>
+            {/* Hair & Styling */}
+            <div className="bg-white border border-slate-100 rounded-[40px] shadow-sm overflow-hidden flex flex-col">
+               <div className="p-8 pb-4">
+                 <div className="w-14 h-14 bg-brand-gold/10 rounded-2xl flex items-center justify-center text-brand-gold mb-6">
+                   <Scissors size={28}/>
+                 </div>
+                 <h4 className="font-bold text-xl mb-2">Cabelo & Corte</h4>
+                 <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                   <span className="text-brand-graphite font-bold">{result.visagismo?.cabelo?.estilo}:</span> {result.visagismo?.cabelo?.motivo}
+                 </p>
                </div>
-               <h4 className="font-bold text-lg mb-3">Corte Sugerido</h4>
-               <p className="text-xs text-slate-500 leading-relaxed">
-                 <span className="text-brand-graphite font-bold">{result.visagismo?.cabelo?.estilo}:</span> {result.visagismo?.cabelo?.motivo}
-               </p>
+               
+               <div className="px-8 pb-8 space-y-6 flex-1">
+                  {result.visagismo?.cabelo?.produtos && result.visagismo.cabelo.produtos.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold text-brand-gold uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Tag size={12}/> Produtos Recomendados
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.visagismo.cabelo.produtos.map((p, i) => (
+                          <span key={i} className="px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-600">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {result.visagismo?.cabelo?.tecnicas && result.visagismo.cabelo.tecnicas.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold text-brand-graphite uppercase tracking-[0.2em] flex items-center gap-2">
+                        <BookOpen size={12}/> Técnicas de Aplicação
+                      </p>
+                      <ul className="space-y-2">
+                        {result.visagismo.cabelo.tecnicas.map((t, i) => (
+                          <li key={i} className="flex gap-3 text-xs text-slate-500 leading-relaxed">
+                            <span className="w-5 h-5 bg-brand-gold/10 text-brand-gold rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">{i+1}</span>
+                            {t}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+               </div>
             </div>
-            {/* Accessories */}
-            <div className="p-6 md:p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl transition-all group">
-               <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-inner">
-                 <Glasses size={24}/>
+
+            {/* Makeup / Beard */}
+            <div className="bg-white border border-slate-100 rounded-[40px] shadow-sm overflow-hidden flex flex-col">
+               <div className="p-8 pb-4">
+                 <div className="w-14 h-14 bg-brand-gold/10 rounded-2xl flex items-center justify-center text-brand-gold mb-6">
+                   <Palette size={28}/>
+                 </div>
+                 <h4 className="font-bold text-xl mb-2">{result.genero === 'Masculino' ? 'Barba & Rosto' : 'Maquiagem & Realce'}</h4>
+                 <p className="text-sm text-slate-500 leading-relaxed mb-6">
+                   <span className="text-brand-graphite font-bold">{result.visagismo?.barba_ou_make?.estilo}:</span> {result.visagismo?.barba_ou_make?.motivo}
+                 </p>
                </div>
-               <h4 className="font-bold text-lg mb-3">Armação & Óptica</h4>
-               <p className="text-xs text-slate-500 leading-relaxed">
-                 <span className="text-brand-graphite font-bold">{result.otica?.armacao}:</span> {result.otica?.motivo}
-               </p>
-            </div>
-            {/* Master Style */}
-            <div className="p-6 md:p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl transition-all group">
-               <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-inner">
-                 <Shirt size={24}/>
+               
+               <div className="px-8 pb-8 space-y-6 flex-1">
+                  {result.visagismo?.barba_ou_make?.produtos && result.visagismo.barba_ou_make.produtos.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold text-brand-gold uppercase tracking-[0.2em] flex items-center gap-2">
+                        <Tag size={12}/> Essenciais de Beleza
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {result.visagismo.barba_ou_make.produtos.map((p, i) => (
+                          <span key={i} className="px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px] font-medium text-slate-600">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {result.visagismo?.barba_ou_make?.tecnicas && result.visagismo.barba_ou_make.tecnicas.length > 0 && (
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-bold text-brand-graphite uppercase tracking-[0.2em] flex items-center gap-2">
+                        <BookOpen size={12}/> Passo a Passo
+                      </p>
+                      <ul className="space-y-2">
+                        {result.visagismo.barba_ou_make.tecnicas.map((t, i) => (
+                          <li key={i} className="flex gap-3 text-xs text-slate-500 leading-relaxed">
+                            <span className="w-5 h-5 bg-brand-gold/10 text-brand-gold rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">{i+1}</span>
+                            {t}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                </div>
-               <h4 className="font-bold text-lg mb-3">Arquétipo Dominante</h4>
-               <p className="text-xs text-slate-500 leading-relaxed">
-                 Baseada no perfil <span className="text-brand-graphite font-bold">{result.sugestoes_roupa?.[0]?.titulo || "Elegante"}</span> para equilíbrio total.
-               </p>
             </div>
           </div>
 
@@ -208,7 +267,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                <div className="w-24 h-24 bg-brand-graphite rounded-[32px] flex items-center justify-center text-brand-gold mb-8 shadow-2xl border-4 border-white animate-bounce">
                  <Lock size={40} />
                </div>
-               <h4 className="text-3xl font-serif font-bold text-brand-graphite mb-4">Liberar Consultoria Completa</h4>
+               <h4 className="text-3xl font-serif font-bold text-brand-graphite mb-4">Liberar Guia de Beleza Completo</h4>
                <button 
                  onClick={onUpgrade}
                  className="flex items-center gap-4 px-10 py-5 bg-brand-gold text-brand-graphite rounded-3xl font-bold shadow-2xl hover:scale-105 transition-all"
@@ -221,7 +280,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
           )}
         </section>
 
-        {/* Curadoria Virtual (Try-On) com Filtros Avançados */}
+        {/* Curadoria Virtual (Try-On) */}
         <section className={`transition-all duration-700 ${!isPremium ? 'blur-xl opacity-30 pointer-events-none' : ''}`}>
            <div className="mb-10 space-y-8">
              <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">

@@ -5,7 +5,7 @@ import {
   Loader2, LogOut, X, Menu, Trash2, Zap, 
   History, Calendar, LayoutGrid, Plus, Info, CheckCircle2, XCircle,
   FileText, Home as HomeIcon, Smartphone, Settings, Palette, CreditCard,
-  ShieldCheck, BarChart3, ArrowUpRight, ChevronRight
+  ShieldCheck, BarChart3, ArrowUpRight, ChevronRight, PlusCircle
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { VisagismAnalysis } from './components/VisagismAnalysis';
@@ -117,6 +117,15 @@ export default function App() {
     handleLogoutLocal();
   };
 
+  const startNewAnalysis = () => {
+    setAnalysisResult(null);
+    setCurrentAnaliseId(null);
+    setSelectedImages([]);
+    setShowHistoryView(false);
+    setShowAdmin(false);
+    setIsMenuOpen(false);
+  };
+
   const handleDownloadPDF = async () => {
     if (!analysisResult) return;
     setToast({ msg: "Gerando Dossiê Premium...", type: 'info' });
@@ -195,7 +204,7 @@ export default function App() {
       ) : (
         <div className="flex flex-col h-screen">
           <header className="bg-white border-b border-slate-100 px-6 py-4 flex justify-between items-center z-40 shrink-0">
-            <div className="flex items-center gap-4 cursor-pointer group" onClick={() => { setShowHistoryView(false); setShowAdmin(false); setAnalysisResult(null); }}>
+            <div className="flex items-center gap-4 cursor-pointer group" onClick={startNewAnalysis}>
               <Logo className="w-10 h-10" />
               <div className="flex flex-col">
                 <h1 className="font-serif text-xl font-bold tracking-tight leading-none">
@@ -231,7 +240,7 @@ export default function App() {
                <div className="w-full max-w-5xl animate-fade-in">
                   <div className="flex justify-between items-center mb-10">
                     <h2 className="text-3xl font-serif font-bold text-brand-graphite">Meu Histórico <span className="text-brand-gold italic">Halizando</span></h2>
-                    <button onClick={() => setShowHistoryView(false)} className="px-6 py-2 bg-brand-graphite text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-xl">Nova Análise</button>
+                    <button onClick={startNewAnalysis} className="px-6 py-2 bg-brand-graphite text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-xl">Nova Análise</button>
                   </div>
                   
                   {history.length > 0 ? (
@@ -266,7 +275,7 @@ export default function App() {
                       <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 shadow-inner"><History size={48} /></div>
                       <h3 className="text-xl font-serif font-bold text-brand-graphite mb-2">Sem registros prévios</h3>
                       <p className="text-slate-400 font-medium text-sm max-w-xs mx-auto">Suas consultorias de luxo aparecerão aqui para consultas futuras.</p>
-                      <button onClick={() => setShowHistoryView(false)} className="mt-8 px-10 py-4 bg-brand-gold text-white rounded-full text-xs font-bold uppercase tracking-widest hover:bg-brand-goldHover transition-all shadow-xl shadow-brand-gold/20">Iniciar Agora</button>
+                      <button onClick={startNewAnalysis} className="mt-8 px-10 py-4 bg-brand-gold text-white rounded-full text-xs font-bold uppercase tracking-widest hover:bg-brand-goldHover transition-all shadow-xl shadow-brand-gold/20">Iniciar Agora</button>
                     </div>
                   )}
                </div>
@@ -383,7 +392,7 @@ export default function App() {
                      userImage={selectedImages[0]}
                      userName={user?.displayName || "Membro VizuHalizando"}
                      onUpgrade={handleManualUpgrade} 
-                     onClose={() => { setAnalysisResult(null); setCurrentAnaliseId(null); }}
+                     onClose={startNewAnalysis}
                      onFeedback={handleFeedback}
                      onDownloadPDF={handleDownloadPDF}
                    />
@@ -413,9 +422,9 @@ export default function App() {
                 </div>
 
                 <nav className="space-y-3 flex-1">
-                  <button onClick={() => { setShowAdmin(false); setShowHistoryView(false); setShowLanding(true); setIsMenuOpen(false); }} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-4 transition-all group">
-                    <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-brand-graphite group-hover:text-white transition-colors"><Smartphone size={20}/></div>
-                    Início do Atelier
+                  <button onClick={startNewAnalysis} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-4 transition-all group">
+                    <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-brand-graphite group-hover:text-white transition-colors"><PlusCircle size={20}/></div>
+                    Nova Consultoria
                   </button>
                   <button onClick={() => { setShowAdmin(false); setShowHistoryView(true); setIsMenuOpen(false); }} className="w-full text-left py-5 px-6 rounded-2xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-4 transition-all group">
                     <div className="p-2 bg-slate-100 rounded-xl group-hover:bg-brand-gold group-hover:text-white transition-colors"><LayoutGrid size={20}/> Consultorias Salvas</button>
