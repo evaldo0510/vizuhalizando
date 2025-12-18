@@ -8,7 +8,7 @@ import {
   Info, ShoppingBag, ExternalLink, Send, Image as ImageIcon, Filter, Save, XCircle,
   ArrowUpDown, Palette, Sliders, MapPin, Briefcase, Sun, Moon, Coffee, Dumbbell,
   Focus, Tag, Edit, Pencil, Scan, Zap, ChevronDown, Shirt, Bell, Search, Home as HomeIcon, FileText, Smartphone,
-  ThumbsUp, ThumbsDown, Package, Layers, ZoomIn, Clock, Lightbulb
+  ThumbsUp, ThumbsDown, Package, Layers, ZoomIn, Clock, Lightbulb, ChevronLeft, CheckCircle2
 } from 'lucide-react';
 import { Onboarding } from './components/Onboarding';
 import { AuthModal } from './components/AuthModal';
@@ -126,7 +126,7 @@ const playShutterSound = () => {
 
 export default function App() {
   const [user, setUser] = useState<{ displayName: string | null; email: string | null; photoURL: string | null; uid: string } | null>(null);
-  const [image, setImage] = useState<string | null>(null); // Reverted to single image
+  const [images, setImages] = useState<string[]>([]); // Changed to Array for multiple photos
   const [history, setHistory] = useState<Analise[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -204,6 +204,9 @@ export default function App() {
   const [toast, setToast] = useState<{ msg: string, type: 'success'|'error'|'info' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Derived primary image
+  const primaryImage = images.length > 0 ? images[0] : null;
+
   // PWA Install State
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -242,7 +245,7 @@ export default function App() {
                   const lastAnalysis = userHistory[0];
                   if (lastAnalysis) {
                       setAnalysisResult(lastAnalysis.resultado_json);
-                      setImage(lastAnalysis.foto_url);
+                      setImages([lastAnalysis.foto_url]);
                   }
               }
               
@@ -263,7 +266,7 @@ export default function App() {
 
   const handleClearData = () => {
       setAnalysisResult(null);
-      setImage(null);
+      setImages([]);
       // We don't delete from DB history, just clear current view
       addToast("Visualização limpa. Histórico mantido.", "info");
   };
@@ -287,7 +290,7 @@ export default function App() {
 
   const handleLoadHistory = (item: Analise) => {
       setAnalysisResult(item.resultado_json);
-      setImage(item.foto_url);
+      setImages([item.foto_url]);
       setCurrentView('analysis');
       addToast("Análise carregada do histórico.", "success");
   };
@@ -386,7 +389,7 @@ export default function App() {
 
               setUserPreferences(prev => ({
                   ...prev,
-                  favoriteStyles: Array.from(currentPrefs).slice(0, 10) // Limit to 10 tags
+                  favoriteStyles: Array.from(currentPrefs).slice(10) // Limit to 10 tags
               }));
           }
       }
@@ -395,8 +398,8 @@ export default function App() {
   };
 
   // Centralized Analysis Logic
-  const runAnalysis = async (inputImage: string) => {
-    if (!inputImage) return;
+  const runAnalysis = async (inputImages: string[]) => {
+    if (!inputImages || inputImages.length === 0) return;
 
     setIsAnalyzing(true);
     setAnalysisResult(null);
@@ -407,9 +410,9 @@ export default function App() {
     
     try {
       // Clean base64 strings
-      const rawBase64Image = inputImage.includes(',') ? inputImage.split(',')[1] : inputImage;
+      const rawBase64Images = inputImages.map(img => img.includes(',') ? img.split(',')[1] : img);
       
-      const result = await analyzeImageWithGemini([rawBase64Image], metrics, targetEnvironment, userPreferences);
+      const result = await analyzeImageWithGemini(rawBase64Images, metrics, targetEnvironment, userPreferences);
       setAnalysisResult(result);
       if (result.tom_pele_detectado) {
           setCurrentSkinTone(result.tom_pele_detectado);
@@ -417,7 +420,8 @@ export default function App() {
 
       // SAVE TO DB if user is logged in
       if (user) {
-          const newAnalise = await db.saveAnalise(parseInt(user.uid) || 0, inputImage, result);
+          // Saving primary image to DB for history
+          const newAnalise = await db.saveAnalise(parseInt(user.uid) || 0, inputImages[0], result);
           setHistory(prev => [newAnalise, ...prev]);
       }
 
@@ -452,22 +456,27 @@ export default function App() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (images.length >= 3) {
+        addToast("Máximo de 3 fotos atingido.", "info");
+        return;
+    }
+
     const reader = new FileReader();
     reader.onloadend = () => {
-        setImage(reader.result as string);
+        setImages(prev => [...prev, reader.result as string]);
     };
     reader.readAsDataURL(file);
     e.target.value = ''; // Reset input
   };
 
-  const removeImage = () => {
-      setImage(null);
+  const removeImage = (index: number) => {
+      setImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const startAnalysis = () => {
-      if (!image) return;
+      if (images.length === 0) return;
       setShowUploadOption(false);
-      runAnalysis(image);
+      runAnalysis(images);
   };
 
   // --- VISAGISM EDITING LOGIC ---
@@ -553,8 +562,8 @@ export default function App() {
   // --- OUTFIT GENERATION & REFINEMENT ---
   const handleGenerateLook = async (index: number, outfit: OutfitSuggestion, customRefinement?: string, silent = false) => {
     // We use image (primary image) for virtual try-on visual generation
-    const primaryImage = image;
-    if (!primaryImage || !analysisResult) return;
+    const sourceImage = primaryImage;
+    if (!sourceImage || !analysisResult) return;
     
     if (customRefinement) {
         setIsRefining(true);
@@ -563,7 +572,7 @@ export default function App() {
     }
 
     try {
-        const rawBase64 = primaryImage.includes(',') ? primaryImage.split(',')[1] : primaryImage;
+        const rawBase64 = sourceImage.includes(',') ? sourceImage.split(',')[1] : sourceImage;
         
         // Uses the *latest* visagism details, including manual edits
         const currentVisagismoDescription = `Hair: ${analysisResult.visagismo.cabelo.estilo} (${analysisResult.visagismo.cabelo.detalhes}). Makeup/Beard: ${analysisResult.visagismo.barba_ou_make.estilo} (${analysisResult.visagismo.barba_ou_make.detalhes}).`;
@@ -638,7 +647,7 @@ export default function App() {
 
   // --- SHARE LOOK LOGIC ---
   const handleShareLook = async (outfit: OutfitSuggestion) => {
-    if (!image) return;
+    if (!primaryImage) return;
     addToast("Preparando imagem...", "success");
     try {
         const canvas = document.createElement('canvas');
@@ -654,7 +663,7 @@ export default function App() {
         // Load Primary Image
         const originalImg = new Image();
         originalImg.crossOrigin = "anonymous";
-        originalImg.src = image;
+        originalImg.src = primaryImage;
         await new Promise(r => originalImg.onload = r);
 
         // Draw Images
@@ -805,9 +814,8 @@ export default function App() {
   };
 
   const capturePhoto = () => {
-    // Single image limitation
-    if (image) {
-        addToast("Você já capturou uma foto.", "info");
+    if (images.length >= 3) {
+        addToast("Máximo de 3 fotos atingido.", "info");
         return;
     }
 
@@ -841,11 +849,10 @@ export default function App() {
         
         const base64 = canvas.toDataURL('image/jpeg', 0.9);
         
-        // Set single image
-        setImage(base64);
+        setImages(prev => [...prev, base64]);
         
         // Visual feedback
-        addToast("Foto capturada!", "success");
+        addToast(`Foto capturada! (${images.length + 1}/3)`, "success");
       }
     }
   };
@@ -857,8 +864,8 @@ export default function App() {
 
   const finishCameraSession = () => {
       stopCamera();
-      if (image) {
-          runAnalysis(image);
+      if (images.length > 0) {
+          setShowUploadOption(true); // Return to preview modal
       }
   };
 
@@ -929,9 +936,9 @@ export default function App() {
         
         // Load original image once
         const originalImg = new Image();
-        if (image) {
+        if (primaryImage) {
             originalImg.crossOrigin = "anonymous";
-            originalImg.src = image;
+            originalImg.src = primaryImage;
             await new Promise(r => originalImg.onload = r);
         }
 
@@ -948,7 +955,7 @@ export default function App() {
              ctx.fillText(outfit.titulo, contentX, 220);
              
              // Draw Image (Generated or Original as fallback)
-             const targetSrc = outfit.generatedImage || image;
+             const targetSrc = outfit.generatedImage || primaryImage;
              if (targetSrc) {
                  const img = new Image();
                  img.crossOrigin = "anonymous";
@@ -977,13 +984,13 @@ export default function App() {
 
   // --- LOOKBOOK / DOSSIER EXPORT (PDF) ---
   const handleExportAnalysis = async () => {
-    if (!analysisResult || !image) return;
+    if (!analysisResult || !primaryImage) return;
     setIsGeneratingDossier(true);
     addToast("Gerando Dossier PDF...", "info");
     
     try {
         const userName = user?.displayName ? user.displayName : 'Cliente';
-        await generateDossierPDF(analysisResult, userName, image);
+        await generateDossierPDF(analysisResult, userName, primaryImage);
         addToast("Dossier baixado com sucesso!", "success");
     } catch (e) {
         console.error(e);
@@ -1167,7 +1174,7 @@ export default function App() {
                         </p>
 
                         <button 
-                            onClick={() => { setImage(null); setShowUploadOption(true); }}
+                            onClick={() => { setImages([]); setShowUploadOption(true); }}
                             className="w-full py-4 bg-brand-graphite dark:bg-white text-white dark:text-brand-graphite rounded-xl font-bold text-sm shadow-lg hover:opacity-90 transition-opacity"
                         >
                             Gerar novo look
@@ -1310,7 +1317,7 @@ export default function App() {
                            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-100 dark:border-slate-800 sticky top-24">
                                <div className="relative h-96 group">
                                    {/* Display Primary Image */}
-                                   <img src={image || ""} alt="User Primary" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                   <img src={primaryImage || ""} alt="User Primary" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                    
                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
                                    
@@ -1578,7 +1585,7 @@ export default function App() {
                                                    ) : outfit.generatedImage ? (
                                                        <ComparisonView 
                                                            generatedSrc={outfit.generatedImage}
-                                                           originalSrc={image || ""} // Using primary image for comparison
+                                                           originalSrc={primaryImage || ""} // Using primary image for comparison
                                                            alt={outfit.titulo}
                                                            onSave={() => handleSaveOrShareImage(outfit.generatedImage!, `Vizu-TryOn-${index}`)}
                                                            onExpand={() => setViewingOutfitIndex(originalIndex)}
@@ -1746,21 +1753,30 @@ export default function App() {
               <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl w-full max-w-sm shadow-2xl relative" onClick={e => e.stopPropagation()}>
                   <button onClick={() => setShowUploadOption(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"><X className="w-5 h-5"/></button>
                   <h3 className="text-xl font-serif font-bold text-center mb-2">Nova Análise</h3>
-                  <p className="text-xs text-slate-500 text-center mb-6">Envie uma foto de rosto com boa iluminação.</p>
+                  <p className="text-xs text-slate-500 text-center mb-6">Envie até 3 fotos (Frente, Perfil) com boa iluminação.</p>
                   
-                  {/* Preview Single Image */}
-                  <div className="aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border border-dashed border-slate-300 dark:border-slate-700 relative mb-6">
-                      {image ? (
-                          <>
-                            <img src={image} className="w-full h-full object-cover" />
-                            <button onClick={removeImage} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full"><Trash2 className="w-3 h-3"/></button>
-                          </>
-                      ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
-                              <ImageIcon className="w-8 h-8 mb-2" />
-                              <span className="text-xs font-bold">Nenhuma foto selecionada</span>
+                  {/* Multi-Photo Preview Grid */}
+                  <div className="grid grid-cols-3 gap-2 mb-6">
+                      {[0, 1, 2].map((idx) => (
+                          <div key={idx} className="relative aspect-square bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border border-dashed border-slate-300 dark:border-slate-700">
+                              {images[idx] ? (
+                                  <>
+                                    <img src={images[idx]} className="w-full h-full object-cover" />
+                                    <button 
+                                        onClick={() => removeImage(idx)} 
+                                        className="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                                    >
+                                        <X className="w-3 h-3"/>
+                                    </button>
+                                  </>
+                              ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                                      <ImageIcon className="w-6 h-6 mb-1 opacity-50" />
+                                      <span className="text-[10px] font-bold text-slate-400">Foto {idx + 1}</span>
+                                  </div>
+                              )}
                           </div>
-                      )}
+                      ))}
                   </div>
 
                   {/* User Metrics Input inside Modal */}
@@ -1792,13 +1808,15 @@ export default function App() {
                       <div className="grid grid-cols-2 gap-3">
                           <button 
                             onClick={() => fileInputRef.current?.click()}
-                            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200"
+                            disabled={images.length >= 3}
+                            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                               <Upload className="w-4 h-4" /> Galeria
                           </button>
                           <button 
                             onClick={() => startCamera('user')}
-                            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200"
+                            disabled={images.length >= 3}
+                            className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                               <Camera className="w-4 h-4" /> Câmera
                           </button>
@@ -1806,10 +1824,10 @@ export default function App() {
                       
                       <button 
                         onClick={startAnalysis}
-                        disabled={!image}
+                        disabled={images.length === 0}
                         className="w-full py-4 bg-brand-graphite text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
                       >
-                          <Wand2 className="w-5 h-5" /> Analisar Foto
+                          <Wand2 className="w-5 h-5" /> Analisar {images.length > 0 ? `(${images.length})` : ''}
                       </button>
                   </div>
               </div>
@@ -1822,13 +1840,14 @@ export default function App() {
         ref={fileInputRef} 
         className="hidden" 
         accept="image/*" 
+        multiple
         onChange={handleImageUpload} 
       />
 
       {/* Full Screen Camera View */}
       {isCameraOpen && (
              <div className="fixed inset-0 z-[100] bg-black flex flex-col">
-                 <div className="relative flex-1 overflow-hidden group">
+                 <div className="relative flex-1 overflow-hidden group bg-black">
                     <video 
                       ref={videoRef} 
                       autoPlay 
@@ -1911,24 +1930,45 @@ export default function App() {
                  </div>
 
                  {/* Camera Controls */}
-                 <div className="h-40 bg-black flex flex-col items-center justify-center pb-6">
+                 <div className="h-auto bg-black flex flex-col items-center justify-end pb-8 pt-4">
+                     {/* Gallery Preview Strip */}
+                     {images.length > 0 && (
+                         <div className="flex gap-2 mb-4 overflow-x-auto px-4 w-full justify-center">
+                             {images.map((img, idx) => (
+                                 <div key={idx} className="w-12 h-12 rounded-lg border-2 border-white overflow-hidden relative">
+                                     <img src={img} className="w-full h-full object-cover" />
+                                     <div className="absolute top-0 right-0 bg-brand-gold text-white text-[8px] font-bold px-1 rounded-bl">
+                                         {idx + 1}
+                                     </div>
+                                 </div>
+                             ))}
+                         </div>
+                     )}
+
                      <div className="flex items-center gap-12">
-                        <div className="w-12 h-12"></div> {/* Spacer */}
+                        <div className="w-12 h-12 flex items-center justify-center">
+                            {images.length > 0 && (
+                                <button 
+                                    onClick={finishCameraSession}
+                                    className="text-white text-xs font-bold hover:text-brand-gold transition-colors flex flex-col items-center"
+                                >
+                                    <CheckCircle2 className="w-6 h-6 mb-1" />
+                                    Concluir
+                                </button>
+                            )}
+                        </div> 
                         
                         <button 
                             onClick={handleCaptureClick}
-                            className={`w-20 h-20 rounded-full border-4 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] bg-white border-slate-300`}
+                            disabled={images.length >= 3}
+                            className={`w-20 h-20 rounded-full border-4 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] ${images.length >= 3 ? 'border-slate-600 opacity-50 cursor-not-allowed' : 'bg-white border-slate-300'}`}
                         >
-                            <div className={`w-16 h-16 rounded-full border-2 bg-white border-black`} />
+                            <div className={`w-16 h-16 rounded-full border-2 ${images.length >= 3 ? 'bg-slate-600 border-slate-800' : 'bg-white border-black'}`} />
                         </button>
                         
-                        <button 
-                            onClick={finishCameraSession}
-                            disabled={!image}
-                            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${image ? 'bg-brand-gold text-white' : 'bg-slate-800 text-slate-500'}`}
-                        >
-                            <Check className="w-6 h-6" />
-                        </button>
+                        <div className="w-12 h-12 flex items-center justify-center">
+                             <span className="text-white font-bold text-sm">{images.length}/3</span>
+                        </div>
                      </div>
                  </div>
              </div>
@@ -2078,7 +2118,7 @@ export default function App() {
                  <div className="w-full h-full max-w-4xl flex items-center justify-center">
                     <ComparisonView 
                         generatedSrc={analysisResult.sugestoes_roupa[viewingOutfitIndex].generatedImage!}
-                        originalSrc={image || ""} // Use primary image
+                        originalSrc={primaryImage || ""} // Use primary image
                         alt="Full Screen View"
                         onSave={() => {}}
                         onExpand={() => {}} // Already expanded

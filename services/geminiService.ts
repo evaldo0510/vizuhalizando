@@ -1,6 +1,5 @@
-
-import { GoogleGenAI, Schema } from "@google/genai";
-import type { AnalysisResult, ImageQualityResult, UserPreferences, UserMetrics } from "../types";
+import { GoogleGenAI } from "@google/genai";
+import type { AnalysisResult, UserPreferences, UserMetrics } from "../types";
 
 // Initialize Gemini Client Lazily (Singleton Pattern)
 let ai: GoogleGenAI | null = null;
@@ -173,8 +172,9 @@ export const analyzeImageWithGemini = async (
   `;
 
   try {
+    // Using gemini-3-pro-preview for complex multimodal analysis task
     const response = await client.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-pro-preview",
       contents: {
         parts: [
           ...imageParts,
@@ -206,7 +206,7 @@ export const generateVisualEdit = async (
 ): Promise<string> => {
     const client = getAi();
     
-    // Construct a high-quality prompt for Imagen
+    // Construct a high-quality prompt for image editing
     let finalPrompt = `
         Fashion photography shot, 8k resolution, highly detailed.
         Subject: A person wearing a stylish outfit.
@@ -221,26 +221,47 @@ export const generateVisualEdit = async (
     }
 
     try {
-        // Use Imagen for image generation instead of Gemini Flash (which is for analysis/text)
-        const response = await client.models.generateImages({
-            model: "imagen-3.0-generate-001",
-            prompt: finalPrompt,
+        // Use gemini-2.5-flash-image for virtual try-on/editing as per guidelines
+        const response = await client.models.generateContent({
+            model: "gemini-2.5-flash-image",
+            contents: {
+              parts: [
+                {
+                  inlineData: {
+                    data: base64Image,
+                    mimeType: "image/jpeg",
+                  },
+                },
+                {
+                  text: finalPrompt,
+                },
+              ],
+            },
             config: {
-                numberOfImages: 1,
-                aspectRatio: "9:16", // Portrait for outfit view
-                outputMimeType: "image/jpeg"
+              imageConfig: {
+                  aspectRatio: "9:16",
+              }
             }
         });
 
-        const generatedImage = response.generatedImages?.[0]?.image?.imageBytes;
+        // Find the image part in candidates
+        let generatedImageBase64 = '';
+        if (response.candidates?.[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+              generatedImageBase64 = part.inlineData.data;
+              break;
+            }
+          }
+        }
         
-        if (generatedImage) {
-            return generatedImage;
+        if (generatedImageBase64) {
+            return generatedImageBase64;
         }
         
         throw new Error("Nenhuma imagem foi gerada.");
     } catch (error) {
         console.error("Generation Error:", error);
-        throw new Error("Não foi possível gerar a visualização. Verifique se o modelo 'imagen-3.0-generate-001' está habilitado ou tente novamente.");
+        throw new Error("Não foi possível gerar a visualização. Tente novamente.");
     }
 };
