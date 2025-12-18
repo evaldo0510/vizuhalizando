@@ -5,7 +5,7 @@ import {
   Scissors, Palette, Glasses, Shirt, Info, ArrowRight,
   Filter, Briefcase, Coffee, PartyPopper, LayoutGrid,
   Sun, Leaf, Snowflake, CloudRain, ThumbsUp, ThumbsDown,
-  Download, Wand2, Loader2, UserCheck
+  Download, Wand2, Loader2, UserCheck, Calendar
 } from 'lucide-react';
 import type { AnalysisResult, OutfitSuggestion } from '../types';
 import { generateVisualEdit } from '../services/geminiService';
@@ -23,6 +23,7 @@ interface VisagismAnalysisProps {
 }
 
 type OccasionFilter = 'Todas' | 'Trabalho' | 'Casual' | 'Festa';
+type SeasonFilter = 'Todas' | 'Primavera' | 'Verão' | 'Outono' | 'Inverno';
 
 export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({ 
   result, 
@@ -35,8 +36,16 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
   onFeedback
 }) => {
   const [occasionFilter, setOccasionFilter] = useState<OccasionFilter>('Todas');
+  const [seasonFilter, setSeasonFilter] = useState<SeasonFilter>('Todas');
+  const [styleFilter, setStyleFilter] = useState<string>('Todos');
   const [localOutfits, setLocalOutfits] = useState<OutfitSuggestion[]>(result.sugestoes_roupa || []);
   const [generatingLookIdx, setGeneratingLookIdx] = useState<number | null>(null);
+
+  const availableStyles = useMemo(() => {
+    const styles = new Set(['Todos']);
+    localOutfits.forEach(o => { if(o.estilo) styles.add(o.estilo) });
+    return Array.from(styles);
+  }, [localOutfits]);
 
   const handleFeedbackClick = (idxInOriginal: number, feedback: 'like' | 'dislike') => {
     if (!onFeedback) return;
@@ -75,12 +84,16 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
     return localOutfits.filter((look) => {
       const matchOccasion = !look.ocasiao || occasionFilter === 'Todas' || 
         look.ocasiao.toLowerCase().includes(occasionFilter.toLowerCase());
-      return matchOccasion;
+      const matchSeason = seasonFilter === 'Todas' || 
+        (look.estacao && look.estacao.toLowerCase().includes(seasonFilter.toLowerCase()));
+      const matchStyle = styleFilter === 'Todos' || look.estilo === styleFilter;
+      
+      return matchOccasion && matchSeason && matchStyle;
     }).map((look) => {
         const originalIdx = localOutfits.findIndex(l => l === look);
         return { ...look, originalIdx };
     });
-  }, [localOutfits, occasionFilter]);
+  }, [localOutfits, occasionFilter, seasonFilter, styleFilter]);
 
   if (!result) return null;
 
@@ -93,8 +106,8 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
              <UserCheck size={24}/>
           </div>
           <div>
-            <h2 className="text-2xl md:text-3xl font-serif font-bold text-brand-graphite leading-tight">Seu Dossiê Digital</h2>
-            <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Identidade Visual de {userName}</p>
+            <h2 className="text-2xl md:text-3xl font-serif font-bold text-brand-graphite leading-tight">Dossiê de Estilo</h2>
+            <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-[0.2em] mt-1">Visagismo Aplicado para {userName}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -121,7 +134,7 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
             <div className="space-y-4">
                <div>
                  <p className="font-bold text-xl md:text-2xl text-brand-graphite">{result.formato_rosto_detalhado || "Analisado"}</p>
-                 <p className="text-[10px] text-brand-gold font-bold uppercase tracking-widest mt-1">{result.biotipo || "Biotipo Padrão"}</p>
+                 <p className="text-[10px] text-brand-gold font-bold uppercase tracking-widest mt-1">Biotipo: {result.biotipo || "Padrão"}</p>
                </div>
                <p className="text-sm text-slate-600 leading-relaxed text-justify">{result.analise_facial}</p>
             </div>
@@ -130,15 +143,19 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
           <div className="bg-slate-50 p-6 md:p-8 rounded-[32px] border border-slate-100 shadow-inner">
             <div className="flex items-center gap-3 mb-6">
               <span className="p-2 bg-white rounded-xl shadow-sm"><Palette className="text-brand-gold" size={20}/></span>
-              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Cromática Pessoal</h3>
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Cromática & Subtom</h3>
             </div>
-            <div className="flex flex-wrap gap-3 mb-6">
+            <div className="flex flex-wrap gap-3 mb-4">
               {result.paleta_cores?.map((color, i) => (
-                <div key={i} className="group relative flex flex-col items-center">
+                <div key={i} className="group relative">
                   <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl border-4 border-white shadow-md transform hover:rotate-6 transition-transform" style={{ backgroundColor: color.hex }} />
-                  <span className="text-[8px] font-bold text-slate-400 mt-2 uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">{color.nome}</span>
                 </div>
               ))}
+            </div>
+            <div className="mb-4">
+               <span className="px-3 py-1 bg-white text-brand-graphite border border-brand-gold/20 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                  Subtom: {result.tom_pele_detectado || "Detectando..."}
+               </span>
             </div>
             <p className="text-sm text-slate-600 leading-relaxed text-justify">{result.analise_pele}</p>
           </div>
@@ -151,97 +168,119 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
               <h3 className="font-serif text-2xl md:text-3xl font-bold text-brand-graphite">Harmonização Técnica</h3>
               {isPremium && <CheckCircle2 className="text-green-500" size={20} />}
             </div>
-            {!isPremium && (
-              <span className="px-4 py-1.5 bg-brand-gold/10 text-brand-gold text-[10px] font-bold rounded-full border border-brand-gold/20 flex items-center gap-2">
-                <Lock size={12} /> CONTEÚDO BLOQUEADO
-              </span>
-            )}
           </div>
 
           <div className={`grid md:grid-cols-3 gap-6 md:gap-8 transition-all duration-700 ${!isPremium ? 'blur-2xl pointer-events-none opacity-40 grayscale' : ''}`}>
             {/* Hair */}
             <div className="p-6 md:p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl transition-all group">
-               <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors">
+               <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-inner">
                  <Scissors size={24}/>
                </div>
-               <h4 className="font-bold text-lg mb-3">Corte & Visagismo</h4>
+               <h4 className="font-bold text-lg mb-3">Corte Sugerido</h4>
                <p className="text-xs text-slate-500 leading-relaxed">
-                 <span className="text-brand-graphite font-bold">{result.visagismo?.cabelo?.estilo || "Estilo Sugerido"}:</span> {result.visagismo?.cabelo?.motivo || "Análise de harmonia."}
+                 <span className="text-brand-graphite font-bold">{result.visagismo?.cabelo?.estilo}:</span> {result.visagismo?.cabelo?.motivo}
                </p>
             </div>
             {/* Accessories */}
             <div className="p-6 md:p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl transition-all group">
-               <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors">
+               <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-inner">
                  <Glasses size={24}/>
                </div>
-               <h4 className="font-bold text-lg mb-3">Óptica & Acessórios</h4>
+               <h4 className="font-bold text-lg mb-3">Armação & Óptica</h4>
                <p className="text-xs text-slate-500 leading-relaxed">
-                 <span className="text-brand-graphite font-bold">{result.otica?.armacao || "Armação"}:</span> {result.otica?.motivo || "Foco no equilíbrio."}
+                 <span className="text-brand-graphite font-bold">{result.otica?.armacao}:</span> {result.otica?.motivo}
                </p>
             </div>
             {/* Master Style */}
             <div className="p-6 md:p-8 bg-white border border-slate-100 rounded-[32px] shadow-sm hover:shadow-xl transition-all group">
-               <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors">
+               <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-brand-gold mb-6 group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-inner">
                  <Shirt size={24}/>
                </div>
-               <h4 className="font-bold text-lg mb-3">Arquétipo de Estilo</h4>
+               <h4 className="font-bold text-lg mb-3">Arquétipo Dominante</h4>
                <p className="text-xs text-slate-500 leading-relaxed">
-                 Sugerimos uma base <span className="text-brand-graphite font-bold">{result.sugestoes_roupa?.[0]?.titulo || "Personalizada"}</span> para equilibrar suas linhas faciais.
+                 Baseada no perfil <span className="text-brand-graphite font-bold">{result.sugestoes_roupa?.[0]?.titulo || "Elegante"}</span> para equilíbrio total.
                </p>
             </div>
           </div>
 
           {!isPremium && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center p-8 text-center bg-white/5 backdrop-blur-[4px] rounded-[40px]">
-               <div className="w-20 h-20 md:w-24 md:h-24 bg-brand-graphite rounded-[32px] flex items-center justify-center text-brand-gold mb-8 shadow-2xl border-4 border-white animate-bounce">
+               <div className="w-24 h-24 bg-brand-graphite rounded-[32px] flex items-center justify-center text-brand-gold mb-8 shadow-2xl border-4 border-white animate-bounce">
                  <Lock size={40} />
                </div>
-               <h4 className="text-2xl md:text-3xl font-serif font-bold text-brand-graphite mb-4">Desbloqueie seu Estudo Completo</h4>
+               <h4 className="text-3xl font-serif font-bold text-brand-graphite mb-4">Liberar Consultoria Completa</h4>
                <button 
                  onClick={onUpgrade}
-                 className="flex items-center gap-4 px-8 py-4 md:px-10 md:py-5 bg-brand-gold text-brand-graphite rounded-3xl font-bold shadow-2xl hover:scale-105 transition-all"
+                 className="flex items-center gap-4 px-10 py-5 bg-brand-gold text-brand-graphite rounded-3xl font-bold shadow-2xl hover:scale-105 transition-all"
                >
                  <CreditCard size={24} />
-                 <span>LIBERAR AGORA</span>
+                 <span>UPGRADE AGORA</span>
                  <ArrowRight size={20} />
                </button>
             </div>
           )}
         </section>
 
-        {/* Curadoria Virtual (Try-On) */}
+        {/* Curadoria Virtual (Try-On) com Filtros Avançados */}
         <section className={`transition-all duration-700 ${!isPremium ? 'blur-xl opacity-30 pointer-events-none' : ''}`}>
-           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
-             <div>
-               <h3 className="font-serif text-2xl md:text-3xl font-bold text-brand-graphite">Curadoria de Looks</h3>
-               <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">Harmonização aplicada em tempo real</p>
-             </div>
-             
-             {isPremium && (
-               <div className="flex bg-slate-100 p-1 rounded-[24px] border border-slate-200 overflow-x-auto">
+           <div className="mb-10 space-y-8">
+             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+               <div>
+                 <h3 className="font-serif text-3xl font-bold text-brand-graphite">Curadoria de Looks</h3>
+                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-2">Harmonização Inteligente Vizu AI</p>
+               </div>
+               
+               <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 overflow-x-auto whitespace-nowrap">
                   {['Todas', 'Trabalho', 'Casual', 'Festa'].map((f) => (
                     <button
                       key={f}
                       onClick={() => setOccasionFilter(f as OccasionFilter)}
-                      className={`px-4 md:px-6 py-2 rounded-2xl text-[9px] md:text-[10px] font-bold transition-all whitespace-nowrap ${occasionFilter === f ? 'bg-white text-brand-graphite shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`px-5 py-2.5 rounded-xl text-[10px] font-bold transition-all ${occasionFilter === f ? 'bg-white text-brand-graphite shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       {f}
                     </button>
                   ))}
                </div>
-             )}
+             </div>
+
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                   <label className="text-[9px] font-bold text-slate-400 uppercase ml-2 tracking-widest">Estação do Ano</label>
+                   <select 
+                     value={seasonFilter} 
+                     onChange={e => setSeasonFilter(e.target.value as SeasonFilter)}
+                     className="w-full p-3 bg-white border border-slate-100 rounded-2xl text-[10px] font-bold text-brand-graphite outline-none focus:ring-2 focus:ring-brand-gold transition-all"
+                   >
+                     <option value="Todas">Todas as Estações</option>
+                     <option value="Primavera">Primavera</option>
+                     <option value="Verão">Verão</option>
+                     <option value="Outono">Outono</option>
+                     <option value="Inverno">Inverno</option>
+                   </select>
+                </div>
+                <div className="space-y-2">
+                   <label className="text-[9px] font-bold text-slate-400 uppercase ml-2 tracking-widest">Estilo Sugerido</label>
+                   <select 
+                     value={styleFilter} 
+                     onChange={e => setStyleFilter(e.target.value)}
+                     className="w-full p-3 bg-white border border-slate-100 rounded-2xl text-[10px] font-bold text-brand-graphite outline-none focus:ring-2 focus:ring-brand-gold transition-all"
+                   >
+                     {availableStyles.map(s => <option key={s} value={s}>{s}</option>)}
+                   </select>
+                </div>
+             </div>
            </div>
 
            {filteredLooks.length > 0 ? (
-             <div className="grid md:grid-cols-2 gap-6 md:gap-8">
+             <div className="grid md:grid-cols-2 gap-8">
                {filteredLooks.map((look, idx) => (
                  <div key={idx} className="bg-white rounded-[40px] border border-slate-100 flex flex-col group hover:border-brand-gold/30 transition-all hover:shadow-2xl overflow-hidden shadow-sm">
-                    <div className="p-6 md:p-8 flex-1">
+                    <div className="p-8 flex-1">
                         {look.generatedImage ? (
                           <div className="aspect-[3/4] rounded-3xl overflow-hidden mb-6 relative bg-slate-900 shadow-2xl">
                              <img src={look.generatedImage} className="w-full h-full object-cover animate-fade-in" />
-                             <div className="absolute bottom-4 left-4 right-4 p-3 bg-brand-graphite/90 backdrop-blur-md rounded-2xl border border-white/10 flex justify-between items-center">
-                                <span className="text-[8px] md:text-[10px] text-brand-gold font-bold uppercase tracking-widest">Visualização em você</span>
+                             <div className="absolute bottom-6 left-6 right-6 p-4 bg-brand-graphite/90 backdrop-blur-md rounded-2xl border border-white/10 flex justify-between items-center">
+                                <span className="text-[10px] text-brand-gold font-bold uppercase tracking-widest">Visualização em você</span>
                                 <button onClick={() => {
                                    const updated = [...localOutfits];
                                    updated[look.originalIdx].generatedImage = undefined;
@@ -250,17 +289,24 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                              </div>
                           </div>
                         ) : (
-                          <div className="flex flex-col gap-4 md:gap-6">
+                          <div className="flex flex-col gap-6">
                             <div className="flex items-center gap-4">
-                              <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-brand-gold shadow-inner border border-slate-100">
+                              <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center text-brand-gold shadow-inner border border-slate-100">
                                 <Shirt size={32}/>
                               </div>
                               <div className="flex-1">
-                                  <h5 className="font-bold text-lg md:text-xl text-slate-800 mb-1 leading-tight">{look.titulo}</h5>
-                                  <span className="text-[8px] md:text-[9px] font-bold text-brand-gold border border-brand-gold/30 px-3 py-1 rounded-full uppercase tracking-widest">{look.ocasiao}</span>
+                                  <h5 className="font-bold text-xl text-slate-800 mb-1">{look.titulo}</h5>
+                                  <div className="flex flex-wrap gap-2">
+                                    <span className="text-[9px] font-bold text-brand-gold border border-brand-gold/30 px-3 py-1 rounded-full uppercase tracking-widest">{look.ocasiao}</span>
+                                    {look.estacao && (
+                                      <span className="text-[9px] font-bold text-slate-400 border border-slate-200 px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1">
+                                        <Sun size={10}/> {look.estacao}
+                                      </span>
+                                    )}
+                                  </div>
                               </div>
                             </div>
-                            <p className="text-xs text-slate-500 leading-relaxed text-justify line-clamp-4">{look.detalhes}</p>
+                            <p className="text-xs text-slate-500 leading-relaxed text-justify h-24 overflow-hidden line-clamp-4">{look.detalhes}</p>
                           </div>
                         )}
                         
@@ -268,19 +314,19 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
                           <button 
                             disabled={generatingLookIdx !== null}
                             onClick={() => handleVirtualTryOn(look.originalIdx, look)}
-                            className="w-full mt-6 py-4 bg-brand-graphite text-white rounded-[24px] text-xs md:text-sm font-bold flex items-center justify-center gap-3 hover:bg-brand-gold transition-all disabled:opacity-50 active:scale-95 shadow-xl group"
+                            className="w-full mt-6 py-4 bg-brand-graphite text-white rounded-[24px] text-sm font-bold flex items-center justify-center gap-3 hover:bg-brand-gold transition-all disabled:opacity-50 active:scale-95 shadow-xl group"
                           >
                             {generatingLookIdx === look.originalIdx ? (
                               <><Loader2 size={18} className="animate-spin" /> PROCESSANDO...</>
                             ) : (
-                              <><Wand2 size={18} /> VER EM MIM</>
+                              <><Wand2 size={18} /> VER LOOK EM MIM</>
                             )}
                           </button>
                         )}
                     </div>
                     
-                    <div className="bg-slate-50/50 border-t border-slate-50 p-4 flex justify-between items-center px-6 md:px-8">
-                        <span className="text-[8px] md:text-[9px] font-bold text-slate-400 uppercase tracking-widest">Feedback Estilo</span>
+                    <div className="bg-slate-50/50 border-t border-slate-50 p-4 flex justify-between items-center px-8">
+                        <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Gostou deste estilo?</span>
                         <div className="flex items-center gap-5">
                             <button onClick={() => handleFeedbackClick(look.originalIdx, 'like')} className={`transition-all hover:scale-125 ${look.feedback === 'like' ? 'text-brand-gold' : 'text-slate-300'}`}><ThumbsUp size={18} fill={look.feedback === 'like' ? 'currentColor' : 'none'} /></button>
                             <button onClick={() => handleFeedbackClick(look.originalIdx, 'dislike')} className={`transition-all hover:scale-125 ${look.feedback === 'dislike' ? 'text-red-400' : 'text-slate-300'}`}><ThumbsDown size={18} fill={look.feedback === 'dislike' ? 'currentColor' : 'none'} /></button>
@@ -291,18 +337,20 @@ export const VisagismAnalysis: React.FC<VisagismAnalysisProps> = ({
              </div>
            ) : (
              <div className="py-24 text-center bg-slate-50 rounded-[60px] border-2 border-dashed border-slate-200">
-               <h4 className="font-bold text-slate-400 text-lg">Nenhum look disponível.</h4>
+               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto text-slate-200 mb-6 shadow-sm"><Filter size={40}/></div>
+               <h4 className="font-bold text-slate-400 text-lg">Nenhum look nesta combinação</h4>
+               <p className="text-sm text-slate-400 mt-2">Tente desativar os filtros para ver todas as opções.</p>
              </div>
            )}
         </section>
       </div>
       
-      <div className="bg-brand-graphite p-8 md:p-10 text-center flex flex-col items-center gap-4">
+      <div className="bg-brand-graphite p-10 text-center flex flex-col items-center gap-4">
         <div className="flex items-center gap-3 opacity-30 grayscale invert">
-          <Logo className="w-5 h-5" />
-          <span className="font-serif text-lg font-bold text-white tracking-tight">VizuHalizando AI</span>
+          <Logo className="w-6 h-6" />
+          <span className="font-serif text-xl font-bold text-white tracking-tight">VizuHalizando AI</span>
         </div>
-        <p className="text-[8px] md:text-[9px] text-white/20 font-bold uppercase tracking-[0.5em]">Consultoria de Imagem de Luxo • {new Date().getFullYear()}</p>
+        <p className="text-[9px] text-white/20 font-bold uppercase tracking-[0.5em]">Consultoria de Imagem de Luxo • {new Date().getFullYear()}</p>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 
 import { supabase } from './supabase';
-import type { AnalysisResult, UserRole } from '../types';
+import type { AnalysisResult } from '../types';
 
 export interface Usuario {
   id: string;

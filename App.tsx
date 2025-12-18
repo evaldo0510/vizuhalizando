@@ -5,12 +5,13 @@ import {
   Loader2, LogOut, X, Menu, Trash2, Zap, 
   History, Calendar, LayoutGrid, Plus, Info, CheckCircle2, XCircle,
   FileText, Home as HomeIcon, Smartphone, Settings, Palette, CreditCard,
-  ShieldCheck, BarChart3, ArrowUpRight
+  ShieldCheck, BarChart3, ArrowUpRight, ChevronRight
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { VisagismAnalysis } from './components/VisagismAnalysis';
 import { AdminDashboard } from './components/AdminDashboard';
 import { Logo } from './components/Logo';
+import { CameraCapture } from './components/CameraCapture';
 import { analyzeImageWithGemini } from './services/geminiService';
 import { LandingPage } from './components/LandingPage'; 
 import { db, Analise, Usuario } from './services/database';
@@ -30,6 +31,7 @@ export default function App() {
   const [showLanding, setShowLanding] = useState(true); 
   const [isPremium, setIsPremium] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [metrics, setMetrics] = useState<UserMetrics>({ height: '', weight: '' });
   const [userPreferences, setUserPreferences] = useState<UserPreferences>({ favoriteStyles: [], favoriteColors: '', avoidItems: '' });
   const [targetEnvironment, setTargetEnvironment] = useState<string>('Estilo Geral');
@@ -149,7 +151,7 @@ export default function App() {
 
   const runAnalysis = async () => {
     if (selectedImages.length === 0) {
-      setToast({ msg: "Envie uma foto facial para começar.", type: "error" });
+      setToast({ msg: "Capture uma foto para análise.", type: "error" });
       setTimeout(() => setToast(null), 3000);
       return;
     }
@@ -165,7 +167,7 @@ export default function App() {
         setHistory(prev => [newAnalise, ...prev]);
       }
     } catch (err: any) {
-      setToast({ msg: "Erro técnico na análise IA.", type: "error" });
+      setToast({ msg: "Erro na análise biométrica.", type: "error" });
       setTimeout(() => setToast(null), 3000);
     } finally {
       setIsAnalyzing(false);
@@ -176,7 +178,7 @@ export default function App() {
     if (user) {
       localStorage.setItem(`premium_${user.uid}`, 'true');
       setIsPremium(true);
-      setToast({ msg: "Acesso Premium Liberado!", type: 'success' });
+      setToast({ msg: "Acesso Premium Ativado!", type: 'success' });
       setTimeout(() => setToast(null), 3000);
     } else {
       setShowAuth(true);
@@ -227,29 +229,44 @@ export default function App() {
                <AdminDashboard />
              ) : showHistoryView ? (
                <div className="w-full max-w-5xl animate-fade-in">
-                  <h2 className="text-3xl font-serif font-bold mb-8 text-brand-graphite">Seu Histórico <span className="text-brand-gold italic">Halizando</span></h2>
+                  <div className="flex justify-between items-center mb-10">
+                    <h2 className="text-3xl font-serif font-bold text-brand-graphite">Meu Histórico <span className="text-brand-gold italic">Halizando</span></h2>
+                    <button onClick={() => setShowHistoryView(false)} className="px-6 py-2 bg-brand-graphite text-white rounded-full text-[10px] font-bold uppercase tracking-widest shadow-xl">Nova Análise</button>
+                  </div>
+                  
                   {history.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 pb-20">
                       {history.map((item) => (
-                        <div key={item.id} className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group" onClick={() => { setAnalysisResult(item.resultado_json); setCurrentAnaliseId(item.id); setSelectedImages([item.foto_url]); setShowHistoryView(false); }}>
+                        <div key={item.id} className="bg-white rounded-[32px] overflow-hidden shadow-sm border border-slate-100 cursor-pointer hover:shadow-2xl hover:-translate-y-2 transition-all group" onClick={() => { setAnalysisResult(item.resultado_json); setCurrentAnaliseId(item.id); setSelectedImages([item.foto_url]); setShowHistoryView(false); }}>
                           <div className="relative aspect-[3/4] overflow-hidden">
-                            <img src={item.foto_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-brand-graphite/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
-                              <span className="text-white font-bold text-[10px] uppercase tracking-[0.2em] flex items-center gap-2">Abrir Dossiê <ArrowUpRight size={14}/></span>
+                            <img src={item.foto_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-brand-graphite/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8">
+                               <div className="flex items-center gap-2 text-brand-gold text-[10px] font-bold uppercase tracking-[0.2em] mb-2">
+                                  <Sparkles size={12}/> {item.resultado_json?.biotipo || "Análise"}
+                               </div>
+                               <span className="text-white font-serif text-2xl font-bold leading-tight">Ver Dossiê <ArrowUpRight size={20} className="inline ml-2" /></span>
                             </div>
                           </div>
-                          <div className="p-6">
-                            <p className="font-bold text-brand-graphite text-lg">{item.resultado_json?.formato_rosto_detalhado || "Análise Facial"}</p>
-                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest">{new Date(item.data_analise).toLocaleDateString('pt-BR')}</p>
+                          <div className="p-6 flex justify-between items-center">
+                            <div>
+                              <p className="font-bold text-brand-graphite text-lg">{item.resultado_json?.formato_rosto_detalhado || "Análise"}</p>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest flex items-center gap-2">
+                                <Calendar size={12}/> {new Date(item.data_analise).toLocaleDateString('pt-BR')}
+                              </p>
+                            </div>
+                            <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-inner">
+                               <ChevronRight size={20}/>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-24 bg-white rounded-[40px] border border-dashed border-slate-200">
-                      <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-200"><History size={40} /></div>
-                      <p className="text-slate-400 font-bold">Nenhuma consultoria anterior encontrada.</p>
-                      <button onClick={() => setShowHistoryView(false)} className="mt-4 px-6 py-2 bg-brand-gold text-white rounded-full text-xs font-bold uppercase tracking-widest hover:bg-brand-goldHover transition-colors">Nova Análise</button>
+                    <div className="text-center py-32 bg-white rounded-[40px] border border-dashed border-slate-200">
+                      <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 shadow-inner"><History size={48} /></div>
+                      <h3 className="text-xl font-serif font-bold text-brand-graphite mb-2">Sem registros prévios</h3>
+                      <p className="text-slate-400 font-medium text-sm max-w-xs mx-auto">Suas consultorias de luxo aparecerão aqui para consultas futuras.</p>
+                      <button onClick={() => setShowHistoryView(false)} className="mt-8 px-10 py-4 bg-brand-gold text-white rounded-full text-xs font-bold uppercase tracking-widest hover:bg-brand-goldHover transition-all shadow-xl shadow-brand-gold/20">Iniciar Agora</button>
                     </div>
                   )}
                </div>
@@ -259,65 +276,78 @@ export default function App() {
                    <div className="w-full max-w-2xl animate-fade-in py-8">
                       <div className="text-center mb-10">
                         <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6 shadow-xl shadow-brand-gold/10 border border-brand-gold/20"><Sparkles size={40}/></div>
-                        <h2 className="text-4xl font-serif font-bold text-brand-graphite mb-3 leading-tight">Consultoria <span className="italic text-brand-gold">Halizando</span></h2>
-                        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">Análise biométrica de precisão para elevar sua imagem ao patamar de luxo.</p>
+                        <h2 className="text-4xl font-serif font-bold text-brand-graphite mb-3 leading-tight">O Atelier <span className="italic text-brand-gold">Halizando</span></h2>
+                        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium">Análise biométrica de alta precisão para a curadoria da sua imagem.</p>
                       </div>
 
-                      <div className="bg-white p-8 rounded-[48px] shadow-2xl border border-slate-100 mb-8 space-y-8">
-                        <div className="grid grid-cols-3 gap-6">
-                          {selectedImages.map((img, idx) => (
-                            <div key={idx} className="aspect-[3/4] rounded-3xl overflow-hidden relative border-2 border-slate-100 shadow-md group">
-                              <img src={img} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                              <button onClick={() => setSelectedImages(prev => prev.filter((_, i) => i !== idx))} className="absolute top-2 right-2 p-2 bg-white/90 text-red-500 rounded-full shadow-lg hover:bg-red-500 hover:text-white transition-all transform hover:scale-110"><Trash2 size={12}/></button>
-                            </div>
-                          ))}
-                          {selectedImages.length < 3 && (
-                            <label className="aspect-[3/4] rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-brand-gold/40 transition-all group">
-                              <div className="p-4 bg-slate-50 rounded-full group-hover:bg-brand-gold/10 transition-colors">
-                                <Plus className="text-slate-300 group-hover:text-brand-gold transition-colors" size={32} />
-                              </div>
-                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-4 text-center px-4">Anexar Face</span>
-                              <input type="file" className="hidden" multiple onChange={(e) => {
-                                const files = e.target.files;
-                                if (files) {
-                                  Array.from(files).forEach((f: File) => {
-                                    const r = new FileReader();
-                                    r.onload = () => setSelectedImages(p => [...p, r.result as string]);
-                                    r.readAsDataURL(f);
-                                  });
-                                }
-                              }} />
-                            </label>
-                          )}
-                        </div>
-                        
-                        <div className="pt-8 border-t border-slate-50 grid grid-cols-2 gap-8">
-                           <div className="space-y-3">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Sua Altura</label>
-                              <div className="relative">
-                                <input 
-                                  type="text" 
-                                  placeholder="Ex: 1.75" 
-                                  value={metrics.height} 
-                                  onChange={e => setMetrics({...metrics, height: e.target.value})}
-                                  className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold transition-all shadow-inner" 
-                                />
-                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] font-bold">M</span>
-                              </div>
+                      <div className="bg-white p-10 rounded-[48px] shadow-2xl border border-slate-100 mb-8 space-y-10">
+                        <div className="grid grid-cols-2 gap-8">
+                           {/* Seleção de Foto */}
+                           <div className="space-y-4">
+                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Sua Foto Facial</label>
+                              {selectedImages[0] ? (
+                                <div className="aspect-[3/4] rounded-3xl overflow-hidden relative border-4 border-slate-50 shadow-2xl group">
+                                  <img src={selectedImages[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
+                                  <button onClick={() => setSelectedImages([])} className="absolute top-4 right-4 p-3 bg-white/90 text-red-500 rounded-full shadow-xl hover:bg-red-500 hover:text-white transition-all transform hover:scale-110"><Trash2 size={16}/></button>
+                                </div>
+                              ) : (
+                                <div className="grid grid-cols-1 gap-4 h-[300px]">
+                                  <button 
+                                    onClick={() => setShowCamera(true)}
+                                    className="h-full rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-brand-gold/40 transition-all group"
+                                  >
+                                    <div className="p-5 bg-brand-gold/10 rounded-full group-hover:scale-110 transition-transform">
+                                      <Camera className="text-brand-gold" size={32} />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Capturar Agora</span>
+                                  </button>
+                                  <label className="h-12 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-50 transition-colors">
+                                    <Upload size={14} className="text-slate-400" />
+                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Enviar Arquivo</span>
+                                    <input type="file" className="hidden" onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      if (f) {
+                                        const r = new FileReader();
+                                        r.onload = () => setSelectedImages([r.result as string]);
+                                        r.readAsDataURL(f);
+                                      }
+                                    }} />
+                                  </label>
+                                </div>
+                              )}
                            </div>
-                           <div className="space-y-3">
-                              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Intenção de Estilo</label>
-                              <select 
-                                value={userPreferences.favoriteStyles[0] || ''} 
-                                onChange={e => setUserPreferences({...userPreferences, favoriteStyles: [e.target.value]})}
-                                className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold appearance-none shadow-inner font-medium text-brand-graphite cursor-pointer"
-                              >
-                                <option value="">Automático IA</option>
-                                <option value="Minimalista">Quiet Luxury / Minimalista</option>
-                                <option value="Elegante">Elegante Contemporâneo</option>
-                                <option value="Streetwear">Streetwear Premium</option>
-                                <option value="Criativo">Editorial / Ousado</option>
-                              </select>
+
+                           {/* Dados Adicionais */}
+                           <div className="space-y-8 py-4">
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Sua Altura</label>
+                                <div className="relative">
+                                  <input 
+                                    type="text" 
+                                    placeholder="Ex: 1.75" 
+                                    value={metrics.height} 
+                                    onChange={e => setMetrics({...metrics, height: e.target.value})}
+                                    className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold transition-all shadow-inner" 
+                                  />
+                                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 text-[10px] font-bold">M</span>
+                                </div>
+                              </div>
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-2">Foco do Estilo</label>
+                                <select 
+                                  value={userPreferences.favoriteStyles[0] || ''} 
+                                  onChange={e => setUserPreferences({...userPreferences, favoriteStyles: [e.target.value]})}
+                                  className="w-full p-4 bg-slate-50 rounded-2xl text-sm border-none focus:ring-2 focus:ring-brand-gold appearance-none shadow-inner font-bold text-brand-graphite cursor-pointer"
+                                >
+                                  <option value="">Automático IA</option>
+                                  <option value="Minimalista">Minimalista / Luxo Silencioso</option>
+                                  <option value="Elegante">Elegante Executivo</option>
+                                  <option value="Criativo">Criativo / Fashionista</option>
+                                </select>
+                              </div>
+                              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">Sua privacidade é prioridade. As fotos são processadas e enviadas apenas para a geração do seu dossiê exclusivo.</p>
+                              </div>
                            </div>
                         </div>
                       </div>
@@ -338,9 +368,9 @@ export default function App() {
                         <Sparkles className="absolute inset-0 m-auto text-brand-graphite w-8 h-8" />
                       </div>
                       <div className="space-y-3">
-                        <h3 className="font-serif italic text-4xl text-brand-graphite">Tecendo seu Estudo...</h3>
+                        <h3 className="font-serif italic text-4xl text-brand-graphite">Tecendo sua Identidade...</h3>
                         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.4em] animate-pulse">
-                          Mapeamento Biométrico em Tempo Real
+                          Harmonização de Proporções Áureas
                         </p>
                       </div>
                    </div>
@@ -402,6 +432,13 @@ export default function App() {
                 </div>
               </div>
             </div>
+          )}
+
+          {showCamera && (
+            <CameraCapture 
+              onCapture={(base64) => setSelectedImages([base64])} 
+              onClose={() => setShowCamera(false)} 
+            />
           )}
 
           {showAuth && <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onMockLogin={() => {}} />}

@@ -8,8 +8,8 @@ export interface VisagismoDetails {
   estilo: string;
   detalhes: string;
   motivo: string;
-  produtos?: string[]; // New: Suggested products
-  tecnicas?: string[]; // New: Styling techniques
+  produtos?: string[];
+  tecnicas?: string[];
 }
 
 export interface Visagismo {
@@ -26,9 +26,9 @@ export interface Otica {
 }
 
 export interface OutfitComponent {
-  peca: string;       // e.g., "Camisa de Linho Bege"
-  loja: string;       // e.g., "Zara"
-  link: string;       // Direct search link
+  peca: string;
+  loja: string;
+  link: string;
   preco_estimado?: string;
 }
 
@@ -45,7 +45,8 @@ export interface OutfitSuggestion {
   ocasiao: string;
   motivo: string;
   visagismo_sugerido: string;
-  estacao?: string; // New: Season classification
+  estacao?: 'Primavera' | 'Verão' | 'Outono' | 'Inverno' | 'Todas';
+  estilo?: string;
   termos_busca: string; 
   partner_suggestion?: PartnerItem; 
   components?: OutfitComponent[];   
@@ -54,7 +55,7 @@ export interface OutfitSuggestion {
   userNote?: string; 
   generatedImage?: string;
   lastModificationPrompt?: string; 
-  feedback?: 'like' | 'dislike' | null; // New: User feedback
+  feedback?: 'like' | 'dislike' | null;
 }
 
 export interface QualityCheck {
@@ -62,19 +63,7 @@ export interface QualityCheck {
   reason: string;
 }
 
-export interface ImageQualityResult {
-  isValid: boolean;
-  score: number; // 0 to 100
-  issues: string[];
-  advice: string;
-  details: {
-    lighting: 'Good' | 'Poor' | 'Too Dark' | 'Too Bright';
-    focus: 'Sharp' | 'Blurry';
-    framing: 'Good' | 'Bad';
-  };
-}
-
-export type SkinTone = 'Quente' | 'Frio' | 'Neutro' | 'Oliva';
+export type SkinTone = 'Quente' | 'Frio' | 'Neutro' | 'Oliva' | 'Pardo Oliva' | 'Negro Oliva';
 
 export interface AnalysisResult {
   quality_check: QualityCheck; 
@@ -92,8 +81,8 @@ export interface AnalysisResult {
 }
 
 export interface UserMetrics {
-  height: string; // e.g., "1.75"
-  weight: string; // e.g., "80"
+  height: string;
+  weight: string;
 }
 
 export interface UserPreferences {
@@ -111,10 +100,4 @@ export interface HistoryItem {
   createdAt: any;
   thumbnail?: string; 
   originalImage?: string; 
-  lastStyleSelected?: string | null;
-  userPreferencesSnapshot?: UserPreferences; 
 }
-
-export type AnalysisContextType = "Corporativo" | "Social" | "Casual" | "Festa";
-
-export type UserRole = 'client' | 'professional' | 'store';
