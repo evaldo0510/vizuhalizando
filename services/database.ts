@@ -1,167 +1,128 @@
 
+import { supabase } from './supabase';
 import type { AnalysisResult, UserRole } from '../types';
 
-// Interfaces matching the SQL Schema
 export interface Usuario {
-  id: number;
+  id: string; // Supabase usa UUID
   nome: string;
   email: string;
-  senha_hash: string; // Storing plain text for this mock, typically hashed
-  telefone?: string;
   foto_perfil?: string;
   nivel_acesso: 'user' | 'admin';
   data_cadastro: string;
 }
 
-export interface Plano {
-  id: number;
-  nome: string;
-  preco: number;
-  descricao: string;
-  creditos_analise: number;
-}
-
 export interface Analise {
   id: number;
-  usuario_id: number;
+  usuario_id: string;
   foto_url: string;
   resultado_json: AnalysisResult;
   data_analise: string;
 }
 
-// Initial Seed Data
-const INITIAL_PLANOS: Plano[] = [
-  { id: 1, nome: 'Visitante', preco: 0.00, descricao: 'Plano gratuito básico', creditos_analise: 1 },
-  { id: 2, nome: 'Premium Vitalício', preco: 29.90, descricao: 'Acesso total e ilimitado', creditos_analise: 9999 },
-  { id: 3, nome: 'Sob Medida', preco: 149.90, descricao: 'Consultoria humana personalizada + Acesso total', creditos_analise: 9999 }
-];
+class SupabaseDatabase {
+  // --- AUTH METHODS ---
 
-const ADMIN_EMAILS = ['evaldo0510@gmail.com', 'aljariristartups@gmail.com'];
-
-class MockDatabase {
-  private getTable<T>(tableName: string): T[] {
-    const data = localStorage.getItem(`vizu_db_${tableName}`);
-    return data ? JSON.parse(data) : [];
-  }
-
-  private saveTable<T>(tableName: string, data: T[]) {
-    localStorage.setItem(`vizu_db_${tableName}`, JSON.stringify(data));
-  }
-
-  constructor() {
-    // Seed Planos if empty
-    const planos = this.getTable<Plano>('planos');
-    if (planos.length === 0) {
-      this.saveTable('planos', INITIAL_PLANOS);
-    }
-  }
-
-  // --- USER METHODS ---
-
-  async registerUser(nome: string, email: string, senha_hash: string, role: UserRole = 'client'): Promise<Usuario> {
-    const usuarios = this.getTable<Usuario>('usuarios');
-    
-    if (usuarios.find(u => u.email === email)) {
-      throw new Error('Email já cadastrado.');
-    }
-
-    // Determine access level based on provided admin emails
-    let nivel_acesso: 'user' | 'admin' = 'user';
-    if (role !== 'client') {
-        if (ADMIN_EMAILS.includes(email.toLowerCase())) {
-            nivel_acesso = 'admin';
-        } else {
-            throw new Error('Este email não tem permissão para criar contas administrativas.');
-        }
-    }
-
-    const newUser: Usuario = {
-      id: Date.now(), // Mock ID
-      nome,
+  async registerUser(nome: string, email: string, senha_plana: string, role: UserRole = 'client') {
+    const { data, error } = await supabase.auth.signUp({
       email,
-      senha_hash,
-      nivel_acesso,
-      data_cadastro: new Date().toISOString()
-    };
+      password: senha_plana,
+      options: {
+        data: {
+          full_name: nome,
+          role: role
+        }
+      }
+    });
 
-    usuarios.push(newUser);
-    this.saveTable('usuarios', usuarios);
-    return newUser;
+    if (error) throw error;
+    if (!data.user) throw new Error("Erro ao criar usuário.");
+
+    return {
+        id: data.user.id,
+        nome: data.user.user_metadata.full_name,
+        email: data.user.email!,
+        nivel_acesso: 'user',
+        data_cadastro: data.user.created_at
+    };
   }
 
-  async loginUser(email: string, senha_hash: string): Promise<Usuario> {
-    const usuarios = this.getTable<Usuario>('usuarios');
-    const user = usuarios.find(u => u.email === email);
+  async loginUser(email: string, senha_plana: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha_plana
+    });
 
-    if (!user) {
-        // Mock default admins if they don't exist yet (for demo purposes)
-        if (ADMIN_EMAILS.includes(email) && senha_hash === '123456') {
-            return this.registerUser('Admin', email, senha_hash, 'professional'); // Auto-register admin
-        }
-        throw new Error('Usuário não encontrado.');
-    }
+    if (error) throw error;
+    if (!data.user) throw new Error("Credenciais inválidas.");
 
-    if (user.senha_hash !== senha_hash) {
-      throw new Error('Senha incorreta.');
-    }
+    return {
+        id: data.user.id,
+        nome: data.user.user_metadata.full_name,
+        email: data.user.email!,
+        foto_perfil: data.user.user_metadata.avatar_url,
+        nivel_acesso: data.user.user_metadata.role === 'admin' ? 'admin' : 'user',
+        data_cadastro: data.user.created_at
+    };
+  }
 
-    // Update last login (simulated)
-    return user;
+  async logout() {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
   }
 
   // --- ANALYSIS METHODS ---
 
-  async saveAnalise(usuario_id: number, foto_url: string, resultado: AnalysisResult): Promise<Analise> {
-    const analises = this.getTable<Analise>('analises');
-    
-    const newAnalise: Analise = {
-        id: Date.now(),
-        usuario_id,
-        foto_url,
-        resultado_json: resultado,
-        data_analise: new Date().toISOString()
-    };
+  async saveAnalise(usuario_id: string, foto_url: string, resultado: AnalysisResult): Promise<Analise> {
+    const { data, error } = await supabase
+        .from('analises')
+        .insert([{
+            usuario_id,
+            foto_url,
+            resultado_json: resultado,
+            data_analise: new Date().toISOString()
+        }])
+        .select()
+        .single();
 
-    analises.push(newAnalise);
-    this.saveTable('analises', analises);
-    
-    // Also save as "current session" for simple persistence on reload
-    localStorage.setItem('vizu_current_analysis', JSON.stringify(newAnalise));
-    
-    return newAnalise;
+    if (error) throw error;
+    return data;
   }
 
-  async getLastAnalise(usuario_id: number): Promise<Analise | null> {
-      const analises = this.getTable<Analise>('analises');
-      const userAnalises = analises.filter(a => a.usuario_id === usuario_id);
-      if (userAnalises.length === 0) return null;
-      // Sort by date desc
-      return userAnalises.sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime())[0];
+  async getUserAnalyses(usuario_id: string): Promise<Analise[]> {
+    const { data, error } = await supabase
+        .from('analises')
+        .select('*')
+        .eq('usuario_id', usuario_id)
+        .order('data_analise', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
   }
 
-  async getUserAnalyses(usuario_id: number): Promise<Analise[]> {
-      const analises = this.getTable<Analise>('analises');
-      // Return all analyses for user, sorted newest first
-      return analises
-        .filter(a => a.usuario_id === usuario_id)
-        .sort((a, b) => new Date(b.data_analise).getTime() - new Date(a.data_analise).getTime());
+  async deleteAccount() {
+      // O Supabase Auth lida com a deleção, mas aqui simulamos a limpeza de dados do perfil
+      const user = await this.getCurrentUser();
+      if (!user) return;
+
+      const { error } = await supabase.auth.admin.deleteUser(user.id);
+      if (error) throw error;
   }
 
   // --- SESSION MANAGEMENT ---
-  
-  setCurrentUser(user: Usuario | null) {
-      if (user) {
-          localStorage.setItem('vizu_session_user', JSON.stringify(user));
-      } else {
-          localStorage.removeItem('vizu_session_user');
-          localStorage.removeItem('vizu_current_analysis');
-      }
-  }
 
-  getCurrentUser(): Usuario | null {
-      const data = localStorage.getItem('vizu_session_user');
-      return data ? JSON.parse(data) : null;
+  async getCurrentUser(): Promise<Usuario | null> {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      return {
+          id: user.id,
+          nome: user.user_metadata.full_name,
+          email: user.email!,
+          foto_perfil: user.user_metadata.avatar_url,
+          nivel_acesso: user.user_metadata.role === 'admin' ? 'admin' : 'user',
+          data_cadastro: user.created_at
+      };
   }
 }
 
-export const db = new MockDatabase();
+export const db = new SupabaseDatabase();
