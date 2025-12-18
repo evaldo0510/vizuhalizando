@@ -1,20 +1,5 @@
-
 import { GoogleGenAI } from "@google/genai";
 import type { AnalysisResult, UserPreferences, UserMetrics } from "../types";
-
-// Initialize Gemini Client Lazily (Singleton Pattern)
-let ai: GoogleGenAI | null = null;
-
-const getAi = () => {
-  if (!ai) {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) {
-        throw new Error("API Key not found. Please check process.env.API_KEY");
-    }
-    ai = new GoogleGenAI({ apiKey });
-  }
-  return ai;
-};
 
 /**
  * Sanitização básica de inputs de texto do usuário
@@ -63,7 +48,9 @@ export const analyzeImageWithGemini = async (
   context?: string,
   preferences?: UserPreferences
 ): Promise<AnalysisResult> => {
-  const client = getAi();
+  // Fix: Create a new GoogleGenAI instance right before making an API call 
+  // ensuring it uses process.env.API_KEY directly as per SDK guidelines.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   const optimizedImages = await Promise.all(
       base64Images.map(img => resizeBase64Image(img))
@@ -86,7 +73,7 @@ export const analyzeImageWithGemini = async (
   `;
 
   try {
-    const response = await client.models.generateContent({
+    const response = await ai.models.generateContent({
       model: "gemini-3-pro-preview",
       contents: {
         parts: [
@@ -97,6 +84,7 @@ export const analyzeImageWithGemini = async (
       config: { responseMimeType: "application/json" }
     });
 
+    // Fix: Directly access the .text property (it's a getter, not a method).
     if (!response.text) throw new Error("IA não retornou dados.");
     return JSON.parse(response.text) as AnalysisResult;
   } catch (error) {
@@ -113,7 +101,8 @@ export const generateVisualEdit = async (
     options: any,
     userRefinement?: string
 ): Promise<string> => {
-    const client = getAi();
+    // Fix: Create a new GoogleGenAI instance right before making an API call.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const safeRefinement = sanitizeInput(userRefinement || "");
     
     const finalPrompt = `
@@ -125,7 +114,7 @@ export const generateVisualEdit = async (
     `;
 
     try {
-        const response = await client.models.generateContent({
+        const response = await ai.models.generateContent({
             model: "gemini-2.5-flash-image",
             contents: {
               parts: [
@@ -136,6 +125,7 @@ export const generateVisualEdit = async (
             config: { imageConfig: { aspectRatio: "9:16" } }
         });
 
+        // Fix: Iterate through all parts to find the image part, do not assume it is the first part.
         const generatedPart = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
         if (!generatedPart) throw new Error("Imagem não gerada.");
         return generatedPart.inlineData!.data;

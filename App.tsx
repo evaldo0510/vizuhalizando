@@ -174,4 +174,57 @@ export default function App() {
                         <h4 className={`font-bold ${!!supabase ? 'text-green-800' : 'text-red-800'}`}>
                             {!!supabase ? 'Conectado ao Supabase' : 'Erro de Configuração no Vercel'}
                         </h4>
-                        <p className="text-sm opacity-80
+                        <p className="text-sm opacity-80">
+                            {!!supabase 
+                              ? 'Seu app está salvando dados na nuvem com sucesso.' 
+                              : 'O Vercel não está enviando as chaves do banco de dados para o navegador.'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <h5 className="font-bold text-sm uppercase text-slate-400">Status das Variáveis:</h5>
+                    <div className="grid gap-2">
+                        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                            <span className="text-sm font-medium">SUPABASE_URL</span>
+                            <span className={`text-xs font-bold ${debugConnection.hasUrl ? 'text-green-600' : 'text-red-500'}`}>
+                                {debugConnection.hasUrl ? `Detectado (${debugConnection.urlPrefix})` : 'Faltando'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                            <span className="text-sm font-medium">SUPABASE_ANON_KEY</span>
+                            <span className={`text-xs font-bold ${debugConnection.hasKey ? 'text-green-600' : 'text-red-500'}`}>
+                                {debugConnection.hasKey ? 'Detectado' : 'Faltando'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {!supabase && (
+                    <div className="bg-brand-graphite text-white p-6 rounded-2xl space-y-4">
+                        <h5 className="font-bold flex items-center gap-2"><Settings className="w-4 h-4 text-brand-gold" /> Como resolver:</h5>
+                        <ol className="text-xs space-y-2 opacity-80 list-decimal pl-4">
+                            <li>Vá ao painel do seu projeto no **Vercel**.</li>
+                            <li>Em **Settings > Environment Variables**, adicione as chaves acima.</li>
+                            <li>Tente usar o prefixo **VITE_** (ex: `VITE_SUPABASE_URL`) se o build falhar.</li>
+                            <li>**IMPORTANTE:** Você deve fazer um novo **Deploy** para as mudanças surtirem efeito.</li>
+                        </ol>
+                    </div>
+                )}
+            </div>
+          </Modal>
+
+          {/* Toasts */}
+          {toast && (
+            <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in-up border ${
+              toast.type === 'success' ? 'bg-white border-green-100 text-green-800' : 'bg-white border-red-100 text-red-800'
+            }`}>
+              {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-red-500" />}
+              <span className="font-bold text-sm">{toast.msg}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

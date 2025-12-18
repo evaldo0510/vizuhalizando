@@ -1,4 +1,3 @@
-
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 /**
@@ -12,9 +11,9 @@ const getEnv = (key: string): string | undefined => {
         const fullKey = `${prefix}${key}`;
         
         // Tenta import.meta.env (Vite)
-        // @ts-ignore
-        if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[fullKey]) {
-            return import.meta.env[fullKey];
+        // Fix: Cast import.meta to any to avoid TS error "Property 'env' does not exist on type 'ImportMeta'"
+        if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[fullKey]) {
+            return (import.meta as any).env[fullKey];
         }
         
         // Tenta process.env (Vercel/Webpack)
