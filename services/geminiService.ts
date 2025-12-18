@@ -1,5 +1,5 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { db } from "./database";
 import type { AnalysisResult, UserPreferences, UserMetrics } from "../types";
 
@@ -8,7 +8,15 @@ const sanitizeInput = (text: string): string => {
     return text.replace(/[<>]/g, "").slice(0, 500);
 };
 
-export const resizeBase64Image = (base64Str: string, maxWidth: number = 512, quality: number = 0.8): Promise<string> => {
+/**
+ * Cleans the string returned by Gemini to ensure it's valid JSON.
+ * Removes markdown blocks (```json ... ```) and any leading/trailing whitespace.
+ */
+const cleanJsonString = (raw: string): string => {
+  return raw.replace(/```json/g, "").replace(/```/g, "").trim();
+};
+
+export const resizeBase64Image = (base64Str: string, maxWidth: number = 768, quality: number = 0.85): Promise<string> => {
     return new Promise((resolve) => {
         if (typeof window === 'undefined') {
             resolve(base64Str);
@@ -54,11 +62,10 @@ export const analyzeImageWithGemini = async (
   );
 
   const safeContext = sanitizeInput(context || 'Estilo Geral');
-  const safeFavColors = sanitizeInput(preferences?.favoriteColors || '');
-  const safeAvoidItems = sanitizeInput(preferences?.avoidItems || '');
-  const safeStyles = preferences?.favoriteStyles?.map(s => sanitizeInput(s)).join(", ") || "";
+  const safeFavColors = sanitizeInput(preferences?.favoriteColors || 'Cores que harmonizem');
+  const safeAvoidItems = sanitizeInput(preferences?.avoidItems || 'Nenhum');
+  const safeStyles = preferences?.favoriteStyles?.map(s => sanitizeInput(s)).join(", ") || "Casual Elegante";
 
-  // Busca histórico de feedback para refinar a IA
   let feedbackContext = "";
   if (userId) {
     feedbackContext = await db.getUserFeedbackSummary(userId);
@@ -73,18 +80,20 @@ export const analyzeImageWithGemini = async (
     
     REQUISITOS TÉCNICOS OBRIGATÓRIOS NO JSON:
     1. No objeto 'visagismo', para 'cabelo' e 'barba_ou_make', inclua:
-       - 'produtos': Array de strings com nomes genéricos de produtos (ex: "Pomada Matte Alta Fixação", "Sérum Iluminador").
-       - 'tecnicas': Array de strings detalhando COMO aplicar (ex: "Secar o cabelo direcionando o ar de baixo para cima para volume").
-    2. Identifique o Gênero com base na imagem.
+       - 'produtos': Array de strings com nomes genéricos de produtos de alta qualidade.
+       - 'tecnicas': Array de strings detalhando técnicas profissionais de aplicação.
+    2. Identifique o Gênero com precisão.
     3. Sugira 'sugestoes_roupa' com 'estacao' e 'estilo'.
 
-    Contexto: ${safeContext}.
-    Métricas: Altura ${metrics.height}m.
-    Preferências: Estilos (${safeStyles}), Cores (${safeFavColors}).
+    Contexto do Usuário: ${safeContext}.
+    Métricas Corporais: Altura ${metrics.height}m, Peso ${metrics.weight}kg.
+    Preferências de Estilo: ${safeStyles}.
+    Cores Favoritas: ${safeFavColors}.
+    Evitar: ${safeAvoidItems}.
     
     ${feedbackContext}
 
-    Retorne estritamente JSON no formato AnalysisResult.
+    Retorne estritamente JSON válido seguindo a interface AnalysisResult.
   `;
 
   try {
@@ -96,15 +105,20 @@ export const analyzeImageWithGemini = async (
           { text: prompt }
         ]
       },
-      config: { responseMimeType: "application/json" }
+      config: { 
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 4000 }
+      }
     });
 
     const text = response.text;
-    if (!text) throw new Error("IA não retornou dados.");
-    return JSON.parse(text) as AnalysisResult;
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    throw new Error("Falha na análise. Verifique a iluminação e tente novamente.");
+    if (!text) throw new Error("A Inteligência Artificial não retornou uma resposta válida.");
+    
+    const cleanedJson = cleanJsonString(text);
+    return JSON.parse(cleanedJson) as AnalysisResult;
+  } catch (error: any) {
+    console.error("Gemini Analysis Error:", error);
+    throw new Error(`Falha na análise biométrica: ${error.message || "Tente novamente com melhor iluminação."}`);
   }
 };
 
@@ -120,11 +134,11 @@ export const generateVisualEdit = async (
     const safeRefinement = sanitizeInput(userRefinement || "");
     
     const finalPrompt = `
-        High-end fashion photography, studio lighting.
-        Person wearing: ${prompt}. 
-        Style context: ${visagismoParams}. 
-        Additional details: ${safeRefinement}.
-        Maintain identity, facial features and the same pose.
+        High-end luxury fashion photography, cinematic lighting, 8k resolution.
+        The person in the provided image is now wearing: ${prompt}. 
+        Styling context: ${visagismoParams}. 
+        User notes: ${safeRefinement}.
+        CRITICAL: Maintain the EXACT facial features, skin tone, hair color, and body posture of the person in the original photo. Only change the clothing and environmental styling.
     `;
 
     try {
@@ -136,14 +150,17 @@ export const generateVisualEdit = async (
                 { text: finalPrompt }
               ]
             },
-            config: { imageConfig: { aspectRatio: "9:16" } }
+            config: { 
+              imageConfig: { aspectRatio: "9:16" } 
+            }
         });
 
         const generatedPart = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-        if (!generatedPart) throw new Error("Imagem não gerada.");
-        return generatedPart.inlineData!.data;
-    } catch (error) {
+        if (!generatedPart || !generatedPart.inlineData) throw new Error("A imagem não pôde ser gerada no momento.");
+        
+        return generatedPart.inlineData.data;
+    } catch (error: any) {
         console.error("Generation Error:", error);
-        throw new Error("Erro no processamento visual.");
+        throw new Error(`Erro no provador virtual: ${error.message || "O serviço está temporariamente indisponível."}`);
     }
 };

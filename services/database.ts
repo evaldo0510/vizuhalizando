@@ -10,6 +10,7 @@ export interface Usuario {
   nivel_acesso: 'user' | 'admin';
   data_cadastro: string;
   isPremium?: boolean;
+  creditos: number; // Novo campo
 }
 
 export interface Analise {
@@ -48,7 +49,8 @@ class HybridDatabase {
       email: email,
       foto_perfil: googleUser.photoURL || googleUser.user_metadata?.avatar_url,
       nivel_acesso: role,
-      data_cadastro: user?.data_cadastro || new Date().toISOString()
+      data_cadastro: user?.data_cadastro || new Date().toISOString(),
+      creditos: user ? user.creditos : 1 // 1 crédito grátis para novos usuários
     };
 
     if (!user || user.nome !== userData.nome || user.foto_perfil !== userData.foto_perfil) {
@@ -58,6 +60,33 @@ class HybridDatabase {
 
     this.setCurrentUser(userData);
     return userData;
+  }
+
+  async useCredit(userId: string): Promise<boolean> {
+    const usuarios = this.getLocalTable<Usuario>('usuarios');
+    const userIdx = usuarios.findIndex(u => u.id === userId);
+    if (userIdx === -1) return false;
+
+    const isPremium = localStorage.getItem(`premium_${userId}`) === 'true';
+    if (isPremium || this.isAdmin(usuarios[userIdx].email)) return true;
+
+    if (usuarios[userIdx].creditos > 0) {
+      usuarios[userIdx].creditos -= 1;
+      this.saveLocalTable('usuarios', usuarios);
+      this.setCurrentUser(usuarios[userIdx]);
+      return true;
+    }
+    return false;
+  }
+
+  async addCredits(userId: string, amount: number): Promise<void> {
+    const usuarios = this.getLocalTable<Usuario>('usuarios');
+    const userIdx = usuarios.findIndex(u => u.id === userId);
+    if (userIdx === -1) return;
+
+    usuarios[userIdx].creditos += amount;
+    this.saveLocalTable('usuarios', usuarios);
+    this.setCurrentUser(usuarios[userIdx]);
   }
 
   async forcePremium(userId: string): Promise<void> {
@@ -123,7 +152,7 @@ class HybridDatabase {
     const usuarios = this.getLocalTable<Usuario>('usuarios');
     const analises = this.getLocalTable<Analise>('analises');
     const premiumUsers = usuarios.filter(u => localStorage.getItem(`premium_${u.id}`) === 'true');
-    const totalGanhos = premiumUsers.length * 29.90;
+    const totalGanhos = premiumUsers.length * 29.90; 
 
     return {
       totalUsuarios: usuarios.length,
