@@ -9,7 +9,7 @@ import {
   ArrowUpDown, Palette, Sliders, MapPin, Briefcase, Sun, Moon, Coffee, Dumbbell,
   Focus, Tag, Edit, Pencil, Scan, Zap, ChevronDown, Shirt, Bell, Search, Home as HomeIcon, FileText, Smartphone,
   ThumbsUp, ThumbsDown, Package, Layers, ZoomIn, Clock, Lightbulb, ChevronLeft, CheckCircle2, Cloud, CloudOff,
-  AlertTriangle, Settings
+  AlertTriangle, Settings, Globe, Copy
 } from 'lucide-react';
 import { Onboarding } from './components/Onboarding';
 import { AuthModal } from './components/AuthModal';
@@ -45,6 +45,9 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
 
+  // Verificação de segurança da API KEY
+  const isApiConfigured = !!process.env.API_KEY || (typeof import.meta !== 'undefined' && !!(import.meta as any).env?.VITE_API_KEY);
+
   useEffect(() => {
       const initApp = async () => {
           try {
@@ -71,6 +74,11 @@ export default function App() {
       initApp();
   }, []);
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setToast({ msg: "Copiado para a área de transferência", type: 'success' });
+  };
+
   const handleLogout = async () => {
       await db.logout();
       setUser(null);
@@ -80,13 +88,12 @@ export default function App() {
       setShowLanding(true);
   };
 
-  const handleMockLogin = (u: any) => {
-      setUser(u);
-      db.getUserAnalyses(u.uid).then(h => setHistory(h));
-      setShowLanding(false);
-  };
-
   const runAnalysis = async (inputImages: string[]) => {
+    if (!isApiConfigured) {
+        setToast({ msg: "Erro: API do Gemini não configurada no Vercel.", type: "error" });
+        setShowDebugModal(true);
+        return;
+    }
     if (!inputImages || inputImages.length === 0) return;
     setIsAnalyzing(true);
     setAnalysisResult(null);
@@ -112,21 +119,22 @@ export default function App() {
         <LandingPage onEnterApp={() => setShowLanding(false)} onLoginClick={() => {}} />
       ) : (
         <div className="flex flex-col h-screen">
-          {/* Header Minimalista */}
           <header className="bg-white border-b border-slate-100 px-6 py-4 flex justify-between items-center z-40">
             <div className="flex items-center gap-3">
               <Logo className="w-8 h-8" />
-              <h1 className="font-serif text-xl font-bold tracking-tight">VizuHalizando</h1>
+              <div className="flex flex-col">
+                  <h1 className="font-serif text-xl font-bold tracking-tight leading-none">VizuHalizando</h1>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital</span>
+              </div>
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Status de Conexão Clicável para Debug */}
               <button 
                 onClick={() => setShowDebugModal(true)}
-                className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all hover:scale-105 active:scale-95 ${!!supabase ? 'bg-green-50 border-green-200 text-green-600' : 'bg-amber-50 border-amber-200 text-amber-600 animate-pulse'}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border transition-all hover:scale-105 active:scale-95 ${isApiConfigured && !!supabase ? 'bg-green-50 border-green-200 text-green-600' : 'bg-red-50 border-red-200 text-red-600 animate-pulse'}`}
               >
-                {!!supabase ? <Cloud className="w-3 h-3" /> : <CloudOff className="w-3 h-3" />}
-                {!!supabase ? 'Sincronizado' : 'Offline'}
+                {isApiConfigured && !!supabase ? <CheckCircle2 className="w-3.5 h-3.5" /> : <AlertTriangle className="w-3.5 h-3.5" />}
+                {isApiConfigured && !!supabase ? 'Pronto' : 'Ajuste Necessário'}
               </button>
               
               <button 
@@ -138,83 +146,99 @@ export default function App() {
             </div>
           </header>
 
-          {/* Área Principal */}
           <main className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
              {!analysisResult && !isAnalyzing && (
                <div className="text-center space-y-6 max-w-md">
-                  <div className="w-20 h-20 bg-brand-gold/10 rounded-full flex items-center justify-center mx-auto text-brand-gold">
+                  <div className="w-20 h-20 bg-brand-gold/10 rounded-full flex items-center justify-center mx-auto text-brand-gold shadow-inner">
                     <Camera className="w-10 h-10" />
                   </div>
-                  <h2 className="text-2xl font-serif font-bold">Inicie sua jornada de estilo</h2>
-                  <p className="text-slate-500">Capture uma imagem para análise imediata com nossa IA de Visagismo.</p>
-                  <button onClick={() => runAnalysis(['dummy_image'])} className="w-full py-4 bg-brand-graphite text-white rounded-xl font-bold hover:scale-105 transition-transform shadow-lg">
-                    Nova Análise
+                  <h2 className="text-2xl font-serif font-bold text-brand-graphite">Seu atelier está aberto.</h2>
+                  <p className="text-slate-500 text-sm leading-relaxed">
+                      Se você está vendo esta tela em <b>vizuhalizando.com.br</b>, o sistema principal foi carregado com sucesso.
+                  </p>
+                  <button onClick={() => runAnalysis(['dummy_image'])} className="w-full py-4 bg-brand-graphite text-white rounded-xl font-bold hover:scale-105 transition-transform shadow-xl">
+                    Iniciar Consultoria
                   </button>
                </div>
              )}
              {isAnalyzing && (
-               <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="w-12 h-12 text-brand-gold animate-spin" />
-                  <p className="font-medium animate-pulse">Sincronizando dados corporais...</p>
+               <div className="flex flex-col items-center gap-4 text-center">
+                  <div className="relative">
+                      <Loader2 className="w-16 h-16 text-brand-gold animate-spin" />
+                      <Sparkles className="w-6 h-6 text-brand-gold absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                  </div>
+                  <p className="font-serif italic text-lg text-brand-graphite animate-pulse">Tecendo recomendações personalizadas...</p>
                </div>
              )}
           </main>
 
-          {/* Modal de Depuração de Conexão (Para resolver o problema do Vercel) */}
           <Modal 
             isOpen={showDebugModal} 
             onClose={() => setShowDebugModal(false)} 
-            title="Diagnóstico de Sincronização" 
+            title="Painel de Controle do Atelier" 
             icon={Settings}
           >
             <div className="space-y-6 py-4">
-                <div className={`p-4 rounded-xl flex items-start gap-4 ${!!supabase ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
-                    {!!supabase ? <CheckCircle2 className="w-6 h-6 text-green-500 mt-1" /> : <AlertTriangle className="w-6 h-6 text-red-500 mt-1" />}
-                    <div>
-                        <h4 className={`font-bold ${!!supabase ? 'text-green-800' : 'text-red-800'}`}>
-                            {!!supabase ? 'Conectado ao Supabase' : 'Erro de Configuração no Vercel'}
-                        </h4>
-                        <p className="text-sm opacity-80">
-                            {!!supabase 
-                              ? 'Seu app está salvando dados na nuvem com sucesso.' 
-                              : 'O Vercel não está enviando as chaves do banco de dados para o navegador.'}
-                        </p>
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex gap-3">
+                    <Info className="w-5 h-5 text-amber-600 shrink-0" />
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                        Se o domínio <b>vizuhalizando.com.br</b> estiver com tela branca ou erro de login, verifique se você adicionou este endereço exato no painel do Supabase em <i>Authentication > URL Configuration</i>.
+                    </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                    <div className={`p-4 rounded-xl border ${!!supabase ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                             {!!supabase ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                             <h4 className="font-bold text-sm uppercase">Banco (Supabase)</h4>
+                        </div>
+                        <p className="text-[10px] opacity-80">{!!supabase ? 'Sincronização na Nuvem Ativa.' : 'Erro: Configure SUPABASE_URL e SUPABASE_ANON_KEY no Vercel.'}</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl border ${isApiConfigured ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                        <div className="flex items-center gap-2 mb-2">
+                             {isApiConfigured ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}
+                             <h4 className="font-bold text-sm uppercase">Cérebro (Gemini)</h4>
+                        </div>
+                        <p className="text-[10px] opacity-80">{isApiConfigured ? 'IA Pronta para Análise.' : 'Erro: Configure API_KEY nas variáveis do Vercel.'}</p>
+                    </div>
+                </div>
+
+                <div className="bg-slate-900 text-white p-6 rounded-2xl">
+                    <div className="flex items-center justify-between mb-4">
+                         <h5 className="font-bold text-sm flex items-center gap-2 text-brand-gold uppercase tracking-widest">
+                            <Globe className="w-4 h-4" /> Domínio Ativo
+                         </h5>
+                         <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-white/60">Produção</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-black/40 p-3 rounded-lg border border-white/10">
+                        <code className="text-xs font-mono text-brand-gold">{debugConnection.currentOrigin}</code>
+                        <button onClick={() => copyToClipboard(debugConnection.currentOrigin)} className="p-1.5 hover:bg-white/10 rounded-md transition-colors">
+                            <Copy className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
 
                 <div className="space-y-4">
-                    <h5 className="font-bold text-sm uppercase text-slate-400">Status das Variáveis:</h5>
-                    <div className="grid gap-2">
-                        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                            <span className="text-sm font-medium">SUPABASE_URL</span>
-                            <span className={`text-xs font-bold ${debugConnection.hasUrl ? 'text-green-600' : 'text-red-500'}`}>
-                                {debugConnection.hasUrl ? `Detectado (${debugConnection.urlPrefix})` : 'Faltando'}
-                            </span>
+                    <h5 className="font-bold text-xs uppercase text-slate-400 px-1">Guia de Correção (Vercel):</h5>
+                    <div className="space-y-2">
+                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold shrink-0">1</div>
+                            <p className="text-xs text-slate-600">Vá no painel do Vercel e confirme se as variáveis têm o prefixo <b>VITE_</b> (Ex: VITE_API_KEY).</p>
                         </div>
-                        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
-                            <span className="text-sm font-medium">SUPABASE_ANON_KEY</span>
-                            <span className={`text-xs font-bold ${debugConnection.hasKey ? 'text-green-600' : 'text-red-500'}`}>
-                                {debugConnection.hasKey ? 'Detectado' : 'Faltando'}
-                            </span>
+                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold shrink-0">2</div>
+                            <p className="text-xs text-slate-600">Certifique-se de que a variável <b>API_KEY</b> do Gemini está com o valor correto.</p>
+                        </div>
+                        <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold shrink-0">3</div>
+                            <p className="text-xs text-slate-600">Faça um <b>Redeploy</b> manual para aplicar as novas variáveis no domínio customizado.</p>
                         </div>
                     </div>
                 </div>
-
-                {!supabase && (
-                    <div className="bg-brand-graphite text-white p-6 rounded-2xl space-y-4">
-                        <h5 className="font-bold flex items-center gap-2"><Settings className="w-4 h-4 text-brand-gold" /> Como resolver:</h5>
-                        <ol className="text-xs space-y-2 opacity-80 list-decimal pl-4">
-                            <li>Vá ao painel do seu projeto no **Vercel**.</li>
-                            <li>Em **Settings > Environment Variables**, adicione as chaves acima.</li>
-                            <li>Tente usar o prefixo **VITE_** (ex: `VITE_SUPABASE_URL`) se o build falhar.</li>
-                            <li>**IMPORTANTE:** Você deve fazer um novo **Deploy** para as mudanças surtirem efeito.</li>
-                        </ol>
-                    </div>
-                )}
             </div>
           </Modal>
 
-          {/* Toasts */}
           {toast && (
             <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-fade-in-up border ${
               toast.type === 'success' ? 'bg-white border-green-100 text-green-800' : 'bg-white border-red-100 text-red-800'

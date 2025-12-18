@@ -1,32 +1,26 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-/**
- * Função utilitária para buscar variáveis de ambiente em diferentes contextos de build
- * (Vite usa import.meta.env, Webpack usa process.env)
- */
 const getEnv = (key: string): string | undefined => {
-    const prefixes = ['', 'VITE_', 'REACT_APP_'];
-    
-    for (const prefix of prefixes) {
-        const fullKey = `${prefix}${key}`;
-        
-        // 1. Tenta import.meta.env (Padrão Vite/Bundlers modernos)
+    // Lista exaustiva de possíveis locais onde o Vercel/Vite/Browser pode guardar a chave
+    const lookups = [
+        // @ts-ignore
+        () => typeof import.meta !== 'undefined' && (import.meta as any).env?.[key],
+        // @ts-ignore
+        () => typeof import.meta !== 'undefined' && (import.meta as any).env?.[`VITE_${key}`],
+        () => typeof process !== 'undefined' && process.env?.[key],
+        () => typeof process !== 'undefined' && process.env?.[`VITE_${key}`],
+        () => typeof process !== 'undefined' && process.env?.[`REACT_APP_${key}`],
+        // @ts-ignore
+        () => window.__env?.[key]
+    ];
+
+    for (const lookup of lookups) {
         try {
-            // @ts-ignore
-            if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[fullKey]) {
-                return (import.meta as any).env[fullKey];
-            }
-        } catch (e) {}
-        
-        // 2. Tenta process.env (Vercel/Node/CI)
-        try {
-            if (typeof process !== 'undefined' && process.env && process.env[fullKey]) {
-                return process.env[fullKey];
-            }
+            const val = lookup();
+            if (val && val !== 'undefined' && val !== 'null') return val;
         } catch (e) {}
     }
-    
     return undefined;
 };
 
@@ -34,32 +28,28 @@ const supabaseUrl = getEnv('SUPABASE_URL');
 const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
 
 const isValid = (val: string | undefined): boolean => {
-    return !!val && val !== '' && val !== 'undefined' && val !== 'null';
+    return !!val && val.length > 10;
 };
 
 let supabaseInstance: SupabaseClient | null = null;
+const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
 
 if (isValid(supabaseUrl) && isValid(supabaseAnonKey)) {
     try {
         supabaseInstance = createClient(supabaseUrl!, supabaseAnonKey!);
-        console.log("✅ VizuHalizando: Cloud Sync estabelecido com sucesso.");
+        console.log(`✅ Supabase: Sincronização Ativa em ${currentOrigin}`);
     } catch (e) {
-        console.error("❌ Supabase Error: Falha ao inicializar o cliente.", e);
+        console.error("❌ Supabase: Erro de Instanciação", e);
     }
 } else {
-    console.warn("⚠️ VizuHalizando: Operando em MODO LOCAL. Sincronização em nuvem desativada.");
-    console.debug("Diagnóstico de Variáveis:", {
-        urlFound: !!supabaseUrl,
-        keyFound: !!supabaseAnonKey,
-        context: typeof process !== 'undefined' ? 'Node/Vercel' : 'Browser Only'
-    });
+    console.warn("⚠️ VizuHalizando: Cloud Sync Inativo (Variáveis ausentes).");
 }
 
-// Exportamos as chaves para o diagnóstico na UI de depuração do App.tsx
 export const debugConnection = {
     hasUrl: isValid(supabaseUrl),
     hasKey: isValid(supabaseAnonKey),
-    urlPrefix: supabaseUrl ? `${supabaseUrl.substring(0, 15)}...` : 'ausente'
+    urlPrefix: supabaseUrl ? `${supabaseUrl.substring(0, 15)}...` : 'ausente',
+    currentOrigin: currentOrigin
 };
 
 export const supabase = supabaseInstance;
