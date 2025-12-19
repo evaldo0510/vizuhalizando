@@ -83,7 +83,7 @@ export const analyzeImageWithGemini = async (
   userId?: string,
   allowLowQuality: boolean = false
 ): Promise<AnalysisResult> => {
-  // Inicializamos a API aqui dentro para garantir que pegamos o process.env.API_KEY mais atualizado
+  // CRITICAL: Always create a fresh instance to use the most up-to-date API key
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const mainImage = base64Images[0].includes(',') ? base64Images[0].split(',')[1] : base64Images[0];
 
@@ -116,14 +116,16 @@ export const analyzeImageWithGemini = async (
     });
 
     const text = response.text;
-    if (!text) throw new Error("A API retornou uma resposta vazia. Verifique sua conexão.");
+    if (!text) throw new Error("A API retornou uma resposta vazia.");
     return JSON.parse(text.trim()) as AnalysisResult;
   } catch (err: any) {
-    console.error("Gemini Analysis Error:", err);
-    // Se o erro for de chave inválida, repassamos para o App tratar abrindo o seletor
-    if (err.message?.includes("API key not valid") || err.status === 400) {
-        throw new Error("AUTH_ERROR: Sua chave de API é inválida ou expirou.");
+    console.error("Gemini Analysis Error Detail:", err);
+    
+    // Check for specific API Key invalidation from Google response
+    if (err.message?.includes("API key not valid") || err.status === 400 || (err.details && JSON.stringify(err.details).includes("API_KEY_INVALID"))) {
+        throw new Error("AUTH_INVALID_KEY");
     }
+    
     throw err;
   }
 };
@@ -167,11 +169,10 @@ export const generateVisualEdit = async (
       }
     }
     
-    throw new Error("Não foi possível gerar o visual. Tente outra foto.");
+    throw new Error("Falha na geração visual.");
   } catch (err: any) {
-    console.error("Gemini Image Error:", err);
     if (err.message?.includes("API key not valid") || err.status === 400) {
-        throw new Error("AUTH_ERROR: Sua chave de API é inválida.");
+        throw new Error("AUTH_INVALID_KEY");
     }
     throw err;
   }

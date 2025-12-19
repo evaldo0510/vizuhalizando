@@ -151,14 +151,7 @@ export default function App() {
     }
 
     const aistudio = (window as any).aistudio;
-    // Força a verificação de chave antes de começar
-    if (aistudio && !(await aistudio.hasSelectedApiKey())) {
-      setToast({ msg: "Selecione uma chave de API válida no Google AI Studio.", type: 'info' });
-      await aistudio.openSelectKey();
-      setTimeout(() => setToast(null), 3000);
-      return;
-    }
-
+    
     if (selectedImages.length === 0) {
       setToast({ msg: "A imagem é necessária para o mapeamento.", type: "error" });
       setTimeout(() => setToast(null), 3000);
@@ -178,11 +171,6 @@ export default function App() {
       const cleanImages = selectedImages.map(img => img.split(',')[1] || img);
       const result = await analyzeImageWithGemini(cleanImages, metrics, targetEnvironment, userPreferences, user?.id, allowLowQuality);
       
-      if (!result.quality_check?.valid) {
-         setToast({ msg: `IA: ${result.quality_check.reason}`, type: "info" });
-         setTimeout(() => setToast(null), 6000);
-      }
-
       setAnalysisResult(result);
       const newAnalise = await db.saveAnalise(user.id, selectedImages[0], result);
       setCurrentAnaliseId(newAnalise.id);
@@ -192,15 +180,17 @@ export default function App() {
     } catch (err: any) {
       console.error("Erro na análise:", err);
       
-      // Caso detecte erro de chave inválida vindo do serviço
-      if (err.message?.includes("AUTH_ERROR") || err.message?.includes("API key not valid") || err.status === 400) {
-        setToast({ msg: "Chave de API Inválida. Por favor, selecione novamente.", type: "error" });
-        if (aistudio) await aistudio.openSelectKey();
+      if (err.message === "AUTH_INVALID_KEY") {
+        setToast({ msg: "ERRO 400: Chave de API Inválida. Por favor, selecione sua chave clicando no ícone de engrenagem.", type: "error" });
+        if (aistudio) {
+            // Pequeno delay para o usuário ler o erro antes do modal abrir
+            setTimeout(() => aistudio.openSelectKey(), 1000);
+        }
       } else {
-        setToast({ msg: err.message || "O Atelier está temporariamente offline.", type: "error" });
+        setToast({ msg: err.message || "Ocorreu um erro inesperado.", type: "error" });
       }
 
-      setTimeout(() => setToast(null), 5000);
+      setTimeout(() => setToast(null), 6000);
       await db.addCredits(user.id, 1);
     } finally {
       setIsAnalyzing(false);
@@ -266,8 +256,12 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-3">
-              <button onClick={handleConfigKey} className="p-2.5 bg-slate-50 text-slate-400 rounded-full hover:text-brand-gold hover:bg-brand-gold/5 transition-all" title="Configurar Chave API">
-                <Settings size={20} strokeWidth={1.2} />
+              <button 
+                onClick={handleConfigKey} 
+                className="p-2.5 bg-brand-gold/10 text-brand-gold rounded-full hover:bg-brand-gold hover:text-white transition-all shadow-sm border border-brand-gold/20" 
+                title="Configurar Chave API"
+              >
+                <Settings size={20} strokeWidth={1.5} className="animate-spin-slow" />
               </button>
 
               {user && !isPremium && (
