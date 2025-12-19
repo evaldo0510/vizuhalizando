@@ -5,7 +5,7 @@ import {
   Loader2, LogOut, X, Menu, Trash2, Zap, 
   History, Calendar, LayoutGrid, CheckCircle2, XCircle,
   CreditCard, ShieldCheck, ArrowUpRight, ChevronRight, PlusCircle, Coins,
-  PenTool, Scissors, Layout
+  PenTool, Scissors, Layout, Info
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { VisagismAnalysis } from './components/VisagismAnalysis';
@@ -198,8 +198,8 @@ export default function App() {
       const result = await analyzeImageWithGemini(cleanImages, metrics, targetEnvironment, userPreferences, user?.id);
       
       if (!result.quality_check?.valid) {
-         setToast({ msg: "IA detectou baixa nitidez. O Atelier usará extrapolação neural.", type: "info" });
-         setTimeout(() => setToast(null), 5000);
+         setToast({ msg: `IA Nota: ${result.quality_check.reason}`, type: "info" });
+         setTimeout(() => setToast(null), 6000);
       }
 
       setAnalysisResult(result);
@@ -210,7 +210,7 @@ export default function App() {
       
     } catch (err: any) {
       console.error("Erro na análise:", err);
-      setToast({ msg: err.message || "Erro na análise biométrica.", type: "error" });
+      setToast({ msg: err.message || "A API do Atelier está temporariamente indisponível.", type: "error" });
       setTimeout(() => setToast(null), 4000);
       await db.addCredits(user.id, 1);
     } finally {
@@ -250,7 +250,7 @@ export default function App() {
                   <span className="text-brand-graphite">Vizu</span>
                   <span className="text-brand-gold">Halizando</span>
                 </h1>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital v5.1</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital v5.2 (Pro)</span>
               </div>
             </div>
             
@@ -332,7 +332,7 @@ export default function App() {
                       <div className="text-center mb-10">
                         <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6 shadow-xl shadow-brand-gold/10 border border-brand-gold/20"><Sparkles size={40} strokeWidth={1.2} /></div>
                         <h2 className="text-4xl md:text-5xl font-serif font-bold text-brand-graphite mb-3 leading-tight">Inicie sua <span className="italic text-brand-gold">Transformação</span></h2>
-                        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium leading-relaxed">Mapeamento biométrico avançado para curadoria de imagem profissional.</p>
+                        <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium leading-relaxed">Engenharia visual avançada com os modelos Gemini 3 Pro.</p>
                       </div>
 
                       <div className="w-full bg-white p-6 md:p-12 rounded-[48px] shadow-2xl border border-slate-100 mb-8 overflow-hidden">
@@ -420,7 +420,7 @@ export default function App() {
 
                       <button disabled={selectedImages.length === 0} onClick={runAnalysis} className="w-full py-7 bg-brand-graphite text-white rounded-[32px] font-bold flex items-center justify-center gap-4 text-xl shadow-2xl active:scale-[0.98] hover:shadow-brand-gold/30 transition-all disabled:opacity-50 group border border-white/10 mt-4">
                         <Zap className="w-6 h-6 text-brand-gold fill-brand-gold group-hover:scale-125 transition-transform" strokeWidth={1.2} /> 
-                        <span>INICIAR CONSULTORIA</span>
+                        <span>INICIAR CONSULTORIA PRO</span>
                       </button>
                    </div>
                  )}
@@ -434,8 +434,8 @@ export default function App() {
                         <Sparkles className="absolute inset-0 m-auto text-brand-graphite w-10 h-10 animate-bounce" strokeWidth={1.2} />
                       </div>
                       <div className="space-y-4">
-                        <h3 className="font-serif italic text-4xl text-brand-graphite">Refinando Visagismo...</h3>
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.5em] animate-pulse">Engenharia Visual em Tempo Real</p>
+                        <h3 className="font-serif italic text-4xl text-brand-graphite">Pensando com Gemini 3 Pro...</h3>
+                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.5em] animate-pulse">Precisão Visagista em Processamento</p>
                       </div>
                    </div>
                  )}
