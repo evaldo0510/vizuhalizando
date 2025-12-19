@@ -502,24 +502,38 @@ export default function App() {
               </div>
             </div>
           )}
-
-                             {showCamera && (
-            <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60">
-              <div className="bg-white p-8 rounded-3xl shadow-2xl">
-                <p className="text-brand-graphite font-bold mb-4">
-                  Módulo de câmera em construção.
-                </p>
-                <button
-                  onClick={() => setShowCamera(false)}
-                  className="px-4 py-2 bg-brand-graphite text-white rounded-full text-sm font-bold"
-                >
-                  Fechar
-                </button>
-              </div>
-            </div>
+          {showCamera && (
+            <CameraCapture 
+              onCapture={(base64) => setSelectedImages([base64])} 
+              onClose={() => setShowCamera(false)} 
+            />
           )}
 
+          {showAuth && (
+            <AuthModal
+              isOpen={showAuth}
+              onClose={() => setShowAuth(false)}
+              onMockLogin={(syncedUser) => {
+                setUser(syncedUser);
+                setIsPremium(checkPremiumStatus(syncedUser.email, syncedUser.id));
+                loadHistory(syncedUser.id);
+              }}
+            />
+          )}
 
+          {toast && (
+            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[1000] px-10 py-6 bg-white shadow-3xl rounded-[32px] border border-slate-100 flex items-center gap-5 animate-fade-in-up min-w-[320px]">
+              <div className={`p-3 rounded-full shadow-inner ${toast.type === 'success' ? 'bg-green-50 text-green-500' : toast.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-brand-gold/10 text-brand-gold'}`}>
+                {toast.type === 'success' ? <CheckCircle2 size={24} strokeWidth={1.5}/> : toast.type === 'error' ? <XCircle size={24} strokeWidth={1.5}/> : <Loader2 size={24} className="animate-spin" strokeWidth={1.5}/>}
+              </div>
+              <span className="font-bold text-sm text-brand-graphite leading-tight">{toast.msg}</span>
+            </div>
+          )}
+        </div>   {/* fecha o container interno */}
+      )}         {/* fecha o ternário do showLanding */}
+    </div>       {/* fecha o wrapper principal */}
+  );
+}               // fecha o componente App
 
           {showAuth && <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onMockLogin={(syncedUser) => {
             setUser(syncedUser);
