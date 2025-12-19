@@ -65,9 +65,6 @@ export const AdminDashboard = () => {
     setIsGeneratingVideo(true);
     setGeneratedVideoUrl(null);
     try {
-      if (typeof (window as any).aistudio !== 'undefined' && !(await (window as any).aistudio.hasSelectedApiKey())) {
-          await (window as any).aistudio.openSelectKey();
-      }
       const url = await generatePromoVideo(videoPrompt);
       setGeneratedVideoUrl(url);
     } catch (error: any) {
@@ -123,7 +120,6 @@ export const AdminDashboard = () => {
              </div>
              <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
                 <div className="flex justify-between items-start mb-4">
-                   {/* Fix: Usage of missing Star icon */}
                    <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Star size={20}/></div>
                 </div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Membros Pro</p>
@@ -266,6 +262,10 @@ export const AdminDashboard = () => {
                  >
                     {isGeneratingVideo ? <><Loader2 className="animate-spin" size={24}/> PROCESSANDO...</> : <><Zap size={24}/> GERAR TEASER CINEMÁTICO</>}
                  </button>
+                 <div className="mt-4 p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-center gap-3">
+                    <Sparkles className="text-amber-500 shrink-0" size={18} />
+                    <p className="text-[10px] text-amber-700 font-bold uppercase leading-relaxed">Nota: A geração de vídeo requer uma chave de API paga do Google AI Studio com faturamento habilitado.</p>
+                 </div>
                  {generatedVideoUrl && (
                    <div className="mt-10 aspect-video rounded-[32px] overflow-hidden bg-black shadow-2xl border-8 border-white group relative">
                       <video src={generatedVideoUrl} controls className="w-full h-full" />
@@ -283,7 +283,6 @@ export const AdminDashboard = () => {
               <h3 className="text-2xl font-serif font-bold text-brand-graphite mb-8">Administração do Atelier</h3>
               <div className="space-y-6">
                  <div className="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100">
-                    {/* Fix: Usage of missing Zap icon */}
                     <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2"><Zap size={14}/> Engine Status</p>
                     <p className="text-sm text-indigo-900 leading-relaxed font-medium">Os modelos Gemini 3 Pro e Veo requerem um projeto Google Cloud com faturamento ativado para operar em escala.</p>
                  </div>

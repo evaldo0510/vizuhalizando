@@ -69,23 +69,16 @@ export const analyzeImageWithGemini = async (
   userId?: string
 ): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
   const mainImage = base64Images[0].includes(',') ? base64Images[0].split(',')[1] : base64Images[0];
 
-  const prompt = `Atue como um consultor de visagismo de luxo e mestre em colorimetria.
-  Dados Biométricos fornecidos pelo usuário: Altura ${metrics.height}m, Peso ${metrics.weight}kg.
-  Contexto da consulta: ${environment || 'Geral'}.
-  
-  TAREFAS TÉCNICAS:
-  1. Analise a imagem para identificar: Formato de Rosto, Biotipo Corporal (baseado em altura/peso e proporções visíveis) e Tom de Pele exato (Cromotipologia).
-  2. Forneça uma análise detalhada sobre como o formato do rosto influencia a percepção da imagem do cliente.
-  3. Crie uma paleta de 5 cores ideais, com nomes customizados usando a marca "By Teodoro" (ex: "Verde Esmeralda By Teodoro").
-  4. Gere 10 sugestões de looks LUXUOSOS e completos que valorizem as características detectadas. 
-  5. Para cada look, inclua uma justificativa visagista (motivo).
-  
-  IMPORTANTE: Se a imagem estiver embaçada, o campo quality_check.valid deve ser false, mas tente realizar uma extrapolação neural para os campos restantes.
-  
-  Retorne EXCLUSIVAMENTE em JSON seguindo o schema fornecido.`;
+  const prompt = `Atue como um Master Visagista. 
+  Analise a foto: Altura ${metrics.height}m, Peso ${metrics.weight}kg.
+  Contexto: ${environment || 'Estilo de Vida'}.
+
+  REQUISITOS:
+  1. Identifique biotipo e formato facial.
+  2. Gere 6 looks de luxo.
+  3. Seja conciso. Retorne APENAS JSON.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
@@ -97,15 +90,12 @@ export const analyzeImageWithGemini = async (
     },
     config: {
       responseMimeType: 'application/json',
-      responseSchema: analysisSchema
+      responseSchema: analysisSchema,
+      temperature: 0.2
     }
   });
 
-  if (response.text) {
-    const data = JSON.parse(response.text);
-    return data as AnalysisResult;
-  }
-  throw new Error("Falha na consultoria neural do Atelier.");
+  return JSON.parse(response.text.trim()) as AnalysisResult;
 };
 
 export const generateVisualEdit = async (
@@ -117,39 +107,32 @@ export const generateVisualEdit = async (
   extra: string
 ): Promise<string> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  
   const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
-  const lookDetails = `${title}: ${details}. Contexto: ${context}. ${extra}`;
-
-  // Prompt ultra-detalhado para o Gemini Flash Image garantir a semelhança facial
-  const masterPrompt = `
-    ULTRA-REALISTIC HIGH-FASHION EDITORIAL PHOTOGRAPHY (8K, Phase One XF).
-    The person in the provided image MUST have their facial features, eyes, and expressions PRESERVED EXACTLY.
-    TRANSFORM only the clothing and the environment.
-    OUTFIT DESCRIPTION: ${lookDetails}.
-    Maintain a luxury studio or high-end urban aesthetic. 
-    Cinematic lighting, Rembrandt style. No skin artifacts.
-    The resulting image must look like a professional brand campaign.
+  
+  // PROMPT HUMANIZADO E ULTRA-RÁPIDO
+  const humanPrompt = `
+    HIGH-END CANDID PHOTOGRAPHY. LUXURY EDITORIAL.
+    STRICT: KEEP ORIGINAL FACE, PORES AND SKIN TEXTURE. NO AI FILTER.
+    OUTFIT CHANGE: ${title} (${details}).
+    FABRICS: Authentic silk, linen, or wool.
+    LIGHTING: Natural studio soft light.
+    RESULT: Realistic human photo, 100% believable.
   `;
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
       parts: [
-        { text: masterPrompt },
+        { text: humanPrompt },
         { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
       ]
     },
     config: {
-        imageConfig: { 
-          aspectRatio: "3:4"
-        }
+        imageConfig: { aspectRatio: "3:4" }
     }
   });
 
   const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-  if (part?.inlineData) {
-    return part.inlineData.data;
-  }
-  throw new Error("O Atelier não conseguiu esculpir a imagem editorial no momento.");
+  if (part?.inlineData) return part.inlineData.data;
+  throw new Error("Erro na escultura do look.");
 };

@@ -8,7 +8,7 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3050/3050253.png">
     
-    <title>VizuHalizando | Atelier Digital</title>
+    <title>VizuHalizando | Atelier Digital Pro</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,6 +36,26 @@
       }
       .loading-text span { color: #C5A572; font-style: italic; font-weight: 700; }
       #root:not(:empty) + #app-loader { opacity: 0; pointer-events: none; }
+      
+      .scrollbar-hide::-webkit-scrollbar { display: none; }
+      .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      .dynamic-carousel {
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+      }
+      .carousel-item {
+        scroll-snap-align: center;
+      }
+
+      @keyframes progress {
+        0% { transform: translateX(-100%); }
+        50% { transform: translateX(0%); }
+        100% { transform: translateX(100%); }
+      }
+      .animate-progress {
+        animation: progress 2.5s infinite ease-in-out;
+      }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -47,10 +67,6 @@
             fontFamily: { sans: ['Inter', 'sans-serif'], serif: ['Playfair Display', 'serif'] },
             colors: {
               brand: { bg: '#FAFAFA', graphite: '#1A1A2E', gold: '#C5A572', goldHover: '#b0905d' },
-              vizu: { cream: '#FAFAFA', gold: '#C5A572', dark: '#1A1A2E', gray: '#F4F4F4' }
-            },
-            boxShadow: {
-              '3xl': '0 35px 60px -15px rgba(0, 0, 0, 0.3)',
             }
           }
         }
@@ -75,12 +91,10 @@
   </head>
   <body>
     <div id="root"></div>
-    
     <div id="app-loader">
         <div class="spinner"></div>
         <div class="loading-text">Vizu<span>Halizando</span></div>
     </div>
-
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

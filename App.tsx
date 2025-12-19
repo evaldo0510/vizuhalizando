@@ -4,7 +4,8 @@ import {
   Camera, Upload, Sparkles, User as UserIcon, 
   Loader2, LogOut, X, Menu, Trash2, Zap, 
   History, Calendar, LayoutGrid, CheckCircle2, XCircle,
-  CreditCard, ShieldCheck, ArrowUpRight, ChevronRight, PlusCircle, Coins
+  CreditCard, ShieldCheck, ArrowUpRight, ChevronRight, PlusCircle, Coins,
+  PenTool, Scissors, Layout
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { VisagismAnalysis } from './components/VisagismAnalysis';
@@ -249,32 +250,32 @@ export default function App() {
                   <span className="text-brand-graphite">Vizu</span>
                   <span className="text-brand-gold">Halizando</span>
                 </h1>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital v4.8</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital v5.1</span>
               </div>
             </div>
             
             <div className="flex items-center gap-3">
               {user && !isPremium && (
                 <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-100 px-4 py-2 rounded-full shadow-inner">
-                  <Coins size={16} className="text-brand-gold" />
+                  <Coins size={16} strokeWidth={1.2} className="text-brand-gold" />
                   <span className="text-[11px] font-bold text-slate-600 uppercase tracking-widest">{user.creditos} Créditos</span>
                 </div>
               )}
 
               {!isPremium && (
                 <button onClick={handleManualUpgrade} className="hidden md:flex items-center gap-2 px-4 py-2 bg-brand-gold text-white rounded-full text-[10px] font-bold animate-pulse hover:bg-brand-goldHover transition-all shadow-lg shadow-brand-gold/20">
-                  <CreditCard size={14} /> LIBERAR ATELIER PRO
+                  <CreditCard size={14} strokeWidth={1.2} /> LIBERAR ATELIER PRO
                 </button>
               )}
               {user?.nivel_acesso === 'admin' && (
                 <button onClick={() => { setShowAdmin(!showAdmin); setShowHistoryView(false); }} className={`p-2.5 rounded-full transition-all ${showAdmin ? 'bg-indigo-600 text-white shadow-lg' : 'bg-indigo-50 text-indigo-600'}`}>
-                  <ShieldCheck size={20} />
+                  <ShieldCheck size={20} strokeWidth={1.2} />
                 </button>
               )}
               <button onClick={() => { setShowHistoryView(!showHistoryView); setShowAdmin(false); setAnalysisResult(null); }} className={`p-2.5 rounded-full transition-all ${showHistoryView ? 'bg-brand-gold text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:text-brand-graphite'}`}>
-                <History className="w-5 h-5" />
+                <History className="w-5 h-5" strokeWidth={1.2} />
               </button>
-              <button onClick={() => setIsMenuOpen(true)} className="p-2.5 bg-brand-graphite text-white rounded-full shadow-lg hover:scale-110 transition-transform"><Menu size={20} /></button>
+              <button onClick={() => setIsMenuOpen(true)} className="p-2.5 bg-brand-graphite text-white rounded-full shadow-lg hover:scale-110 transition-transform"><Menu size={20} strokeWidth={1.2} /></button>
             </div>
           </header>
 
@@ -296,20 +297,20 @@ export default function App() {
                             <img src={item.foto_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
                             <div className="absolute inset-0 bg-gradient-to-t from-brand-graphite/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8">
                                <div className="flex items-center gap-2 text-brand-gold text-[10px] font-bold uppercase tracking-[0.2em] mb-2">
-                                  <Sparkles size={12}/> {item.resultado_json?.biotipo || "Análise"}
+                                  <Sparkles size={12} strokeWidth={1.2}/> {item.resultado_json?.biotipo || "Análise"}
                                </div>
-                               <span className="text-white font-serif text-2xl font-bold leading-tight">Visualizar Dossiê <ArrowUpRight size={20} className="inline ml-2" /></span>
+                               <span className="text-white font-serif text-2xl font-bold leading-tight">Visualizar Dossiê <ArrowUpRight size={20} strokeWidth={1.2} className="inline ml-2" /></span>
                             </div>
                           </div>
                           <div className="p-8 flex justify-between items-center">
                             <div>
                               <p className="font-bold text-brand-graphite text-lg truncate max-w-[150px]">{item.resultado_json?.formato_rosto_detalhado || "Análise"}</p>
                               <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 tracking-widest flex items-center gap-2">
-                                <Calendar size={12}/> {new Date(item.data_analise).toLocaleDateString('pt-BR')}
+                                <Calendar size={12} strokeWidth={1.2}/> {new Date(item.data_analise).toLocaleDateString('pt-BR')}
                               </p>
                             </div>
                             <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-brand-gold group-hover:text-white transition-all shadow-inner">
-                               <ChevronRight size={24}/>
+                               <ChevronRight size={24} strokeWidth={1.2}/>
                             </div>
                           </div>
                         </div>
@@ -317,7 +318,7 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="text-center py-32 bg-white rounded-[48px] border border-dashed border-slate-200">
-                      <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 shadow-inner"><History size={48} /></div>
+                      <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-200 shadow-inner"><History size={48} strokeWidth={1} /></div>
                       <h3 className="text-xl font-serif font-bold text-brand-graphite mb-2">Seu Histórico está vazio</h3>
                       <p className="text-slate-400 font-medium text-sm max-w-xs mx-auto">Suas consultorias de luxo aparecerão aqui para consultas futuras.</p>
                       <button onClick={startNewAnalysis} className="mt-8 px-10 py-4 bg-brand-gold text-white rounded-full text-xs font-bold uppercase tracking-widest hover:bg-brand-goldHover transition-all shadow-xl shadow-brand-gold/20">Começar Agora</button>
@@ -329,7 +330,7 @@ export default function App() {
                  {!analysisResult && !isAnalyzing && (
                    <div className="w-full max-w-5xl animate-fade-in py-8 px-4 flex flex-col items-center">
                       <div className="text-center mb-10">
-                        <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6 shadow-xl shadow-brand-gold/10 border border-brand-gold/20"><Sparkles size={40}/></div>
+                        <div className="w-20 h-20 bg-brand-gold/10 rounded-3xl flex items-center justify-center mx-auto text-brand-gold mb-6 shadow-xl shadow-brand-gold/10 border border-brand-gold/20"><Sparkles size={40} strokeWidth={1.2} /></div>
                         <h2 className="text-4xl md:text-5xl font-serif font-bold text-brand-graphite mb-3 leading-tight">Inicie sua <span className="italic text-brand-gold">Transformação</span></h2>
                         <p className="text-slate-500 text-sm max-w-sm mx-auto font-medium leading-relaxed">Mapeamento biométrico avançado para curadoria de imagem profissional.</p>
                       </div>
@@ -343,7 +344,7 @@ export default function App() {
                                 {selectedImages[0] ? (
                                   <div className="w-full h-full rounded-[36px] overflow-hidden relative border-4 border-slate-50 shadow-2xl group">
                                     <img src={selectedImages[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" />
-                                    <button onClick={() => setSelectedImages([])} className="absolute top-4 right-4 p-3 bg-white/90 text-red-500 rounded-full shadow-xl hover:bg-red-500 hover:text-white transition-all transform hover:scale-110 z-20"><Trash2 size={16}/></button>
+                                    <button onClick={() => setSelectedImages([])} className="absolute top-4 right-4 p-3 bg-white/90 text-red-500 rounded-full shadow-xl hover:bg-red-500 hover:text-white transition-all transform hover:scale-110 z-20"><Trash2 size={16} strokeWidth={1.2}/></button>
                                   </div>
                                 ) : (
                                   <div className="w-full h-full flex flex-col gap-4">
@@ -352,12 +353,12 @@ export default function App() {
                                       className="flex-1 rounded-[36px] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-brand-gold/40 transition-all group"
                                     >
                                       <div className="p-6 bg-brand-gold/10 rounded-full group-hover:scale-110 transition-transform shadow-sm">
-                                        <Camera className="text-brand-gold" size={32} />
+                                        <Camera className="text-brand-gold" size={32} strokeWidth={1.2} />
                                       </div>
                                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Capturar Agora</span>
                                     </button>
                                     <label className="h-16 border-2 border-slate-100 rounded-2xl flex items-center justify-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors shrink-0">
-                                      <Upload size={18} className="text-slate-400" />
+                                      <Upload size={18} strokeWidth={1.2} className="text-slate-400" />
                                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Upload de Arquivo</span>
                                       <input type="file" className="hidden" onChange={(e) => {
                                         const f = e.target.files?.[0];
@@ -403,12 +404,12 @@ export default function App() {
                                     <option value="Esportivo">Esportivo / Athleisure</option>
                                   </select>
                                   <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-300">
-                                    <ChevronRight className="rotate-90" size={16} />
+                                    <ChevronRight className="rotate-90" size={16} strokeWidth={1.2} />
                                   </div>
                                 </div>
                               </div>
                               <div className="p-8 bg-slate-50 rounded-[32px] border border-slate-100 shadow-inner flex flex-col items-center justify-center gap-3">
-                                 <Coins size={20} className="text-brand-gold" />
+                                 <Coins size={20} strokeWidth={1.2} className="text-brand-gold" />
                                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed text-center">
                                    Status: {isPremium ? <span className="text-indigo-500">Atelier Pro Ativo</span> : <><span className="text-brand-graphite">{user?.creditos || 0}</span> Créditos Disponíveis</>}
                                  </p>
@@ -418,7 +419,7 @@ export default function App() {
                       </div>
 
                       <button disabled={selectedImages.length === 0} onClick={runAnalysis} className="w-full py-7 bg-brand-graphite text-white rounded-[32px] font-bold flex items-center justify-center gap-4 text-xl shadow-2xl active:scale-[0.98] hover:shadow-brand-gold/30 transition-all disabled:opacity-50 group border border-white/10 mt-4">
-                        <Zap className="w-6 h-6 text-brand-gold fill-brand-gold group-hover:scale-125 transition-transform" /> 
+                        <Zap className="w-6 h-6 text-brand-gold fill-brand-gold group-hover:scale-125 transition-transform" strokeWidth={1.2} /> 
                         <span>INICIAR CONSULTORIA</span>
                       </button>
                    </div>
@@ -429,8 +430,8 @@ export default function App() {
                       <div className="relative p-10">
                         <div className="absolute inset-0 border-2 border-brand-gold/20 rounded-full animate-ping"></div>
                         <div className="absolute inset-0 border-4 border-brand-gold/10 rounded-full animate-pulse blur-xl"></div>
-                        <Loader2 className="w-32 h-32 text-brand-gold animate-spin relative z-10" />
-                        <Sparkles className="absolute inset-0 m-auto text-brand-graphite w-10 h-10 animate-bounce" />
+                        <Loader2 className="w-32 h-32 text-brand-gold animate-spin relative z-10" strokeWidth={0.8} />
+                        <Sparkles className="absolute inset-0 m-auto text-brand-graphite w-10 h-10 animate-bounce" strokeWidth={1.2} />
                       </div>
                       <div className="space-y-4">
                         <h3 className="font-serif italic text-4xl text-brand-graphite">Refinando Visagismo...</h3>
@@ -459,7 +460,7 @@ export default function App() {
             <div className="fixed inset-0 z-[100] flex justify-end">
               <div className="absolute inset-0 bg-brand-graphite/40 backdrop-blur-md" onClick={() => setIsMenuOpen(false)} />
               <div className="relative w-85 h-full bg-white p-12 animate-slide-in-right shadow-3xl flex flex-col border-l border-slate-100 rounded-l-[56px]">
-                <button onClick={() => setIsMenuOpen(false)} className="absolute top-10 right-10 text-slate-300 hover:text-brand-graphite transition-colors p-3 hover:bg-slate-50 rounded-full"><X/></button>
+                <button onClick={() => setIsMenuOpen(false)} className="absolute top-10 right-10 text-slate-300 hover:text-brand-graphite transition-colors p-3 hover:bg-slate-50 rounded-full"><X strokeWidth={1.2} size={24} /></button>
                 
                 <div className="mb-14 flex items-center gap-6 border-b border-slate-50 pb-12">
                   <div className="w-24 h-24 bg-brand-gold/10 rounded-[32px] flex items-center justify-center overflow-hidden border-2 border-brand-gold/20 shadow-xl">
@@ -469,7 +470,7 @@ export default function App() {
                     <p className="font-serif text-3xl font-bold text-brand-graphite leading-tight">{user?.nome || 'Convidado'}</p>
                     <div className="flex items-center gap-2 mt-3">
                        <p className="text-[10px] text-brand-gold font-bold uppercase tracking-widest flex items-center gap-2 bg-brand-gold/5 px-4 py-1.5 rounded-full border border-brand-gold/10">
-                        {isPremium ? <><CheckCircle2 size={12}/> ATELIER PRO</> : `${user?.creditos || 0} CRÉDITOS`}
+                        {isPremium ? <><CheckCircle2 size={12} strokeWidth={1.5}/> ATELIER PRO</> : `${user?.creditos || 0} CRÉDITOS`}
                       </p>
                     </div>
                   </div>
@@ -477,31 +478,34 @@ export default function App() {
 
                 <nav className="space-y-4 flex-1">
                   <button onClick={startNewAnalysis} className="w-full text-left py-6 px-8 rounded-3xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-5 transition-all group">
-                    <div className="p-3 bg-slate-100 rounded-2xl group-hover:bg-brand-graphite group-hover:text-white transition-colors shadow-sm"><PlusCircle size={24}/></div>
+                    <div className="p-3 bg-slate-100 rounded-2xl group-hover:bg-brand-graphite group-hover:text-white transition-colors shadow-sm"><PlusCircle size={24} strokeWidth={1.2}/></div>
                     Nova Consultoria
                   </button>
                   <button onClick={() => { setShowAdmin(false); setShowHistoryView(true); setIsMenuOpen(false); }} className="w-full text-left py-6 px-8 rounded-3xl font-bold text-sm text-slate-600 hover:bg-slate-50 flex items-center gap-5 transition-all group">
-                    <div className="p-3 bg-slate-100 rounded-2xl group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-sm"><LayoutGrid size={24}/> Meus Dossiês</button>
+                    <div className="p-3 bg-slate-100 rounded-2xl group-hover:bg-brand-gold group-hover:text-white transition-colors shadow-sm"><LayoutGrid size={24} strokeWidth={1.2}/></div>
+                    Meus Dossiês
+                  </button>
                   {user?.nivel_acesso === 'admin' && (
                     <button onClick={() => { setShowAdmin(true); setShowHistoryView(false); setIsMenuOpen(false); }} className="w-full text-left py-6 px-8 rounded-3xl font-bold text-sm text-indigo-600 bg-indigo-50 flex items-center gap-5 transition-all mt-8 border border-indigo-100 group shadow-sm">
-                      <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg"><ShieldCheck size={24}/></div>
+                      <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg"><ShieldCheck size={24} strokeWidth={1.2}/></div>
                       Painel do Atelier
                     </button>
                   )}
                   {!isPremium && (
                     <button onClick={handleManualUpgrade} className="w-full text-left py-6 px-8 rounded-3xl font-bold text-sm text-brand-gold bg-brand-gold/5 flex items-center gap-5 transition-all mt-2 border border-brand-gold/10 group shadow-sm">
-                      <div className="p-3 bg-brand-gold text-white rounded-2xl shadow-lg"><Sparkles size={24}/></div>
+                      <div className="p-3 bg-brand-gold text-white rounded-2xl shadow-lg"><Sparkles size={24} strokeWidth={1.2}/></div>
                       Upgrade para Pro
                     </button>
                   )}
                 </nav>
 
                 <div className="pt-12 border-t border-slate-50">
-                  <button onClick={handleLogout} className="w-full py-6 bg-red-50 text-red-500 rounded-[32px] font-bold text-sm flex items-center justify-center gap-4 hover:bg-red-100 transition-colors shadow-sm"><LogOut size={20}/> Encerrar Atelier</button>
+                  <button onClick={handleLogout} className="w-full py-6 bg-red-50 text-red-500 rounded-[32px] font-bold text-sm flex items-center justify-center gap-4 hover:bg-red-100 transition-colors shadow-sm"><LogOut size={20} strokeWidth={1.2}/> Encerrar Atelier</button>
                 </div>
               </div>
             </div>
           )}
+
           {showCamera && (
             <CameraCapture 
               onCapture={(base64) => setSelectedImages([base64])} 
@@ -523,15 +527,30 @@ export default function App() {
 
           {toast && (
             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[1000] px-10 py-6 bg-white shadow-3xl rounded-[32px] border border-slate-100 flex items-center gap-5 animate-fade-in-up min-w-[320px]">
-              <div className={`p-3 rounded-full shadow-inner ${toast.type === 'success' ? 'bg-green-50 text-green-500' : toast.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-brand-gold/10 text-brand-gold'}`}>
-                {toast.type === 'success' ? <CheckCircle2 size={24} strokeWidth={1.5}/> : toast.type === 'error' ? <XCircle size={24} strokeWidth={1.5}/> : <Loader2 size={24} className="animate-spin" strokeWidth={1.5}/>}
+              <div
+                className={`p-3 rounded-full shadow-inner ${
+                  toast.type === 'success'
+                    ? 'bg-green-50 text-green-500'
+                    : toast.type === 'error'
+                    ? 'bg-red-50 text-red-500'
+                    : 'bg-brand-gold/10 text-brand-gold'
+                }`}
+              >
+                {toast.type === 'success' ? (
+                  <CheckCircle2 size={24} strokeWidth={1.5} />
+                ) : toast.type === 'error' ? (
+                  <XCircle size={24} strokeWidth={1.5} />
+                ) : (
+                  <Loader2 size={24} className="animate-spin" strokeWidth={1.5} />
+                )}
               </div>
-              <span className="font-bold text-sm text-brand-graphite leading-tight">{toast.msg}</span>
+              <span className="font-bold text-sm text-brand-graphite leading-tight">
+                {toast.msg}
+              </span>
             </div>
           )}
-        </div>   {/* fecha o container interno */}
-      )}         {/* fecha o ternário do showLanding */}
-    </div>       {/* fecha o wrapper principal */}
+        </div>
+      )}
+    </div>
   );
-}               // fecha o componente App
-
+}

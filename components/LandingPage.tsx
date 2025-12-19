@@ -24,7 +24,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
     }
   };
 
-  const closeModal = () => setActiveModal(null);
+  const closeModal = () => {
+    setActiveModal(null);
+    setIsGeneratingPromo(false);
+  };
 
   const handleLoadPromo = async () => {
     setIsGeneratingPromo(true);
@@ -32,8 +35,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
       // Prompt padrão de luxo para o VizuHalizando
       const url = await generatePromoVideo("Luxury digital atelier showing futuristic AI face mapping, stylish virtual try-ons of high-end suits and dresses, elegant motion graphics, professional lighting, 4k cinematic quality");
       setPromoUrl(url);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erro ao carregar promo:", err);
+      // If generation fails due to missing key, we inform the user
+      if (err.message?.includes("selecione uma chave")) {
+        // No alert needed, the generatePromoVideo will have opened the dialog
+      }
     } finally {
       setIsGeneratingPromo(false);
     }
@@ -211,7 +218,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterApp, onLoginCli
                         ) : promoUrl ? (
                             <video src={promoUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                         ) : (
-                            <div className="text-white text-center p-10">Falha ao carregar prévia promocional.</div>
+                            <div className="text-white text-center p-10 flex flex-col items-center gap-4">
+                                <p>A prévia de vídeo requer uma conta paga vinculada ao Google AI Studio.</p>
+                                <button onClick={handleLoadPromo} className="px-6 py-2 bg-brand-gold text-brand-graphite rounded-xl font-bold">Tentar Novamente</button>
+                            </div>
                         )}
                     </div>
                     <div className="lg:col-span-4 p-10 lg:p-12 flex flex-col justify-center space-y-10 bg-brand-graphite border-l border-white/5">
