@@ -5,7 +5,7 @@ import {
   Loader2, LogOut, X, Menu, Trash2, Zap, 
   History, Calendar, LayoutGrid, CheckCircle2, XCircle,
   CreditCard, ShieldCheck, ArrowUpRight, ChevronRight, PlusCircle, Coins,
-  PenTool, Scissors, Layout, Info
+  PenTool, Scissors, Layout, Info, EyeOff
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { VisagismAnalysis } from './components/VisagismAnalysis';
@@ -40,6 +40,7 @@ export default function App() {
   const [showHistoryView, setShowHistoryView] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
+  const [allowLowQuality, setAllowLowQuality] = useState(false);
 
   const checkPremiumStatus = useCallback((email: string | null, uid: string) => {
     if (!email) return false;
@@ -195,7 +196,7 @@ export default function App() {
     setAnalysisResult(null);
     try {
       const cleanImages = selectedImages.map(img => img.split(',')[1] || img);
-      const result = await analyzeImageWithGemini(cleanImages, metrics, targetEnvironment, userPreferences, user?.id);
+      const result = await analyzeImageWithGemini(cleanImages, metrics, targetEnvironment, userPreferences, user?.id, allowLowQuality);
       
       if (!result.quality_check?.valid) {
          setToast({ msg: `IA Nota: ${result.quality_check.reason}`, type: "info" });
@@ -408,6 +409,20 @@ export default function App() {
                                   </div>
                                 </div>
                               </div>
+
+                              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl border border-slate-100">
+                                <button 
+                                  onClick={() => setAllowLowQuality(!allowLowQuality)}
+                                  className={`flex-1 py-3 px-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${allowLowQuality ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-white text-slate-400 border border-slate-100'}`}
+                                >
+                                  {allowLowQuality ? <Info size={14}/> : <EyeOff size={14}/>}
+                                  {allowLowQuality ? 'Baixa Nitidez ON' : 'Análise Standard'}
+                                </button>
+                                {allowLowQuality && (
+                                  <span className="text-[9px] font-bold text-amber-500 animate-pulse">MODO EXTRAPOLAÇÃO ATIVO</span>
+                                )}
+                              </div>
+
                               <div className="p-8 bg-slate-50 rounded-[32px] border border-slate-100 shadow-inner flex flex-col items-center justify-center gap-3">
                                  <Coins size={20} strokeWidth={1.2} className="text-brand-gold" />
                                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.2em] leading-relaxed text-center">

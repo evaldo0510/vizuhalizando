@@ -72,14 +72,20 @@ export const analyzeImageWithGemini = async (
   metrics: { height: string, weight: string },
   environment?: string,
   preferences?: any,
-  userId?: string
+  userId?: string,
+  allowLowQuality: boolean = false
 ): Promise<AnalysisResult> => {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const mainImage = base64Images[0].includes(',') ? base64Images[0].split(',')[1] : base64Images[0];
 
+  const qualityInstruction = allowLowQuality 
+    ? "A foto possui baixa qualidade ou ruído. Utilize sua capacidade de extrapolação neural para estimar os traços e proporções com base em silhuetas e volumes perceptíveis. Informe o nível de confiança na resposta."
+    : "A foto deve ser nítida e bem iluminada para um diagnóstico preciso.";
+
   const prompt = `Você é um Master Visagista e Personal Stylist de luxo. 
   Analise a imagem em anexo considerando: Altura: ${metrics.height}m, Peso: ${metrics.weight}kg.
   Contexto do cliente: ${environment || 'Profissional e Casual'}.
+  ${qualityInstruction}
   
   Técnicas: Identificação de biotipo (Ecto/Meso/Endo), Geometria Facial e Colorimetria.
   Retorne um diagnóstico completo de consultoria de imagem em JSON.`;
