@@ -151,8 +151,9 @@ export default function App() {
     }
 
     const aistudio = (window as any).aistudio;
+    // Força a verificação de chave antes de começar
     if (aistudio && !(await aistudio.hasSelectedApiKey())) {
-      setToast({ msg: "Por favor, configure sua Chave de API antes de continuar.", type: 'info' });
+      setToast({ msg: "Selecione uma chave de API válida no Google AI Studio.", type: 'info' });
       await aistudio.openSelectKey();
       setTimeout(() => setToast(null), 3000);
       return;
@@ -191,9 +192,9 @@ export default function App() {
     } catch (err: any) {
       console.error("Erro na análise:", err);
       
-      // Caso seja erro de API Key inválida
-      if (err.message?.includes("API key not valid") || err.status === 400) {
-        setToast({ msg: "Erro de autenticação. Selecione uma chave válida.", type: "error" });
+      // Caso detecte erro de chave inválida vindo do serviço
+      if (err.message?.includes("AUTH_ERROR") || err.message?.includes("API key not valid") || err.status === 400) {
+        setToast({ msg: "Chave de API Inválida. Por favor, selecione novamente.", type: "error" });
         if (aistudio) await aistudio.openSelectKey();
       } else {
         setToast({ msg: err.message || "O Atelier está temporariamente offline.", type: "error" });
@@ -217,10 +218,6 @@ export default function App() {
     }
   };
 
-  /**
-   * Fix for handleFeedback missing error.
-   * Updates the feedback for a specific outfit suggestion in the database.
-   */
   const handleFeedback = async (outfitIdx: number, feedback: 'like' | 'dislike' | null) => {
     if (currentAnaliseId) {
       try {
@@ -231,10 +228,6 @@ export default function App() {
     }
   };
 
-  /**
-   * Fix for handleDownloadPDF missing error.
-   * Generates and downloads a PDF dossier for the current analysis result.
-   */
   const handleDownloadPDF = async () => {
     if (analysisResult) {
       try {
