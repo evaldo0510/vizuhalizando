@@ -503,12 +503,23 @@ export default function App() {
             </div>
           )}
 
-          {showCamera && (
-            <CameraCapture 
-              onCapture={(base64) => setSelectedImages([base64])} 
-              onClose={() => setShowCamera(false)} 
-            />
+                             {showCamera && (
+            <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60">
+              <div className="bg-white p-8 rounded-3xl shadow-2xl">
+                <p className="text-brand-graphite font-bold mb-4">
+                  Módulo de câmera em construção.
+                </p>
+                <button
+                  onClick={() => setShowCamera(false)}
+                  className="px-4 py-2 bg-brand-graphite text-white rounded-full text-sm font-bold"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
           )}
+
+
 
           {showAuth && <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onMockLogin={(syncedUser) => {
             setUser(syncedUser);
