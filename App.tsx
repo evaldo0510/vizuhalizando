@@ -5,7 +5,7 @@ import {
   Loader2, LogOut, X, Menu, Trash2, Zap, 
   History, Calendar, LayoutGrid, CheckCircle2, XCircle,
   CreditCard, ShieldCheck, ArrowUpRight, ChevronRight, PlusCircle, Coins,
-  PenTool, Scissors, Layout, Info, EyeOff
+  PenTool, Scissors, Layout, Info, EyeOff, Settings
 } from 'lucide-react';
 import { AuthModal } from './components/AuthModal';
 import { VisagismAnalysis } from './components/VisagismAnalysis';
@@ -137,45 +137,24 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
-  const handleDownloadPDF = async () => {
-    if (!analysisResult) return;
-    setToast({ msg: "Gerando Dossiê Premium...", type: 'info' });
-    try {
-      await generateDossierPDF(analysisResult, user?.nome || "Cliente VizuHalizando", selectedImages[0]);
-      setToast({ msg: "PDF salvo com sucesso!", type: 'success' });
-    } catch (error: any) {
-      setToast({ msg: "Erro ao gerar PDF.", type: 'error' });
-    } finally {
-      setTimeout(() => setToast(null), 3000);
-    }
-  };
-
-  const handleFeedback = async (outfitIdx: number, feedback: 'like' | 'dislike' | null) => {
-    if (currentAnaliseId) {
-      try {
-        await db.updateAnaliseFeedback(currentAnaliseId, outfitIdx, feedback);
-        setHistory(prev => prev.map(item => 
-          item.id === currentAnaliseId 
-            ? { 
-                ...item, 
-                resultado_json: { 
-                  ...item.resultado_json, 
-                  sugestoes_roupa: item.resultado_json.sugestoes_roupa.map((s, i) => 
-                    i === outfitIdx ? { ...s, feedback } : s
-                  ) 
-                } 
-              } 
-            : item
-        ));
-      } catch (err) {
-        console.error("Erro ao atualizar feedback:", err);
-      }
+  const handleConfigKey = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio) {
+      await aistudio.openSelectKey();
     }
   };
 
   const runAnalysis = async () => {
     if (!user) {
       setShowAuth(true);
+      return;
+    }
+
+    const aistudio = (window as any).aistudio;
+    if (aistudio && !(await aistudio.hasSelectedApiKey())) {
+      setToast({ msg: "Por favor, configure sua Chave de API antes de continuar.", type: 'info' });
+      await aistudio.openSelectKey();
+      setTimeout(() => setToast(null), 3000);
       return;
     }
 
@@ -211,9 +190,16 @@ export default function App() {
       
     } catch (err: any) {
       console.error("Erro na análise:", err);
-      setToast({ msg: err.message || "O Atelier está temporariamente offline.", type: "error" });
-      setTimeout(() => setToast(null), 4000);
-      // Estorna o crédito em caso de erro crítico da API
+      
+      // Caso seja erro de API Key inválida
+      if (err.message?.includes("API key not valid") || err.status === 400) {
+        setToast({ msg: "Erro de autenticação. Selecione uma chave válida.", type: "error" });
+        if (aistudio) await aistudio.openSelectKey();
+      } else {
+        setToast({ msg: err.message || "O Atelier está temporariamente offline.", type: "error" });
+      }
+
+      setTimeout(() => setToast(null), 5000);
       await db.addCredits(user.id, 1);
     } finally {
       setIsAnalyzing(false);
@@ -228,6 +214,38 @@ export default function App() {
       setTimeout(() => setToast(null), 3000);
     } else {
       setShowAuth(true);
+    }
+  };
+
+  /**
+   * Fix for handleFeedback missing error.
+   * Updates the feedback for a specific outfit suggestion in the database.
+   */
+  const handleFeedback = async (outfitIdx: number, feedback: 'like' | 'dislike' | null) => {
+    if (currentAnaliseId) {
+      try {
+        await db.updateAnaliseFeedback(currentAnaliseId, outfitIdx, feedback);
+      } catch (err) {
+        console.error("Erro ao salvar feedback:", err);
+      }
+    }
+  };
+
+  /**
+   * Fix for handleDownloadPDF missing error.
+   * Generates and downloads a PDF dossier for the current analysis result.
+   */
+  const handleDownloadPDF = async () => {
+    if (analysisResult) {
+      try {
+        await generateDossierPDF(analysisResult, user?.nome || "Membro VizuHalizando", selectedImages[0]);
+        setToast({ msg: "Dossiê PDF gerado com sucesso!", type: 'success' });
+        setTimeout(() => setToast(null), 3000);
+      } catch (err) {
+        console.error("Erro ao gerar PDF:", err);
+        setToast({ msg: "Erro ao gerar o PDF do dossiê.", type: 'error' });
+        setTimeout(() => setToast(null), 3000);
+      }
     }
   };
 
@@ -255,6 +273,10 @@ export default function App() {
             </div>
             
             <div className="flex items-center gap-3">
+              <button onClick={handleConfigKey} className="p-2.5 bg-slate-50 text-slate-400 rounded-full hover:text-brand-gold hover:bg-brand-gold/5 transition-all" title="Configurar Chave API">
+                <Settings size={20} strokeWidth={1.2} />
+              </button>
+
               {user && !isPremium && (
                 <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-100 px-4 py-2 rounded-full shadow-inner">
                   <Coins size={16} strokeWidth={1.2} className="text-brand-gold" />

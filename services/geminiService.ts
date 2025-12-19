@@ -83,7 +83,7 @@ export const analyzeImageWithGemini = async (
   userId?: string,
   allowLowQuality: boolean = false
 ): Promise<AnalysisResult> => {
-  // Inicializa com a chave atual do ambiente
+  // Instancia a API logo antes da chamada para capturar a chave atualizada
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const mainImage = base64Images[0].includes(',') ? base64Images[0].split(',')[1] : base64Images[0];
 
@@ -101,28 +101,26 @@ export const analyzeImageWithGemini = async (
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: 'image/jpeg', data: mainImage } }
-          ]
-        }
-      ],
+      contents: {
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: 'image/jpeg', data: mainImage } }
+        ]
+      },
       config: {
         responseMimeType: 'application/json',
         responseSchema: analysisSchema,
         temperature: 0.1,
-        thinkingConfig: { thinkingBudget: 32768 } // Orçamento máximo para análise profunda
+        thinkingConfig: { thinkingBudget: 32768 }
       }
     });
 
     const text = response.text;
-    if (!text) throw new Error("O Atelier não conseguiu processar esta imagem.");
+    if (!text) throw new Error("A API retornou uma resposta vazia.");
     return JSON.parse(text.trim()) as AnalysisResult;
   } catch (err: any) {
     console.error("Gemini Analysis Error:", err);
-    throw new Error(err.message || "Erro de conexão com o servidor de IA.");
+    throw err;
   }
 };
 
@@ -148,29 +146,26 @@ export const generateVisualEdit = async (
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: [
-        {
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
-          ]
-        }
-      ],
+      contents: {
+        parts: [
+          { text: prompt },
+          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
+        ]
+      },
       config: {
         imageConfig: { aspectRatio: "3:4" }
       }
     });
 
-    // Procura a parte da imagem na resposta
     for (const part of response.candidates?.[0]?.content?.parts || []) {
       if (part.inlineData?.data) {
         return part.inlineData.data;
       }
     }
     
-    throw new Error("Não foi possível renderizar o look.");
+    throw new Error("Não foi possível localizar a imagem gerada na resposta.");
   } catch (err: any) {
     console.error("Gemini Image Error:", err);
-    throw new Error(err.message || "Erro na geração visual.");
+    throw err;
   }
 };
