@@ -535,21 +535,3 @@ export default function App() {
   );
 }               // fecha o componente App
 
-          {showAuth && <AuthModal isOpen={showAuth} onClose={() => setShowAuth(false)} onMockLogin={(syncedUser) => {
-            setUser(syncedUser);
-            setIsPremium(checkPremiumStatus(syncedUser.email, syncedUser.id));
-            loadHistory(syncedUser.id);
-          }} />}
-          {toast && (
-            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[1000] px-10 py-6 bg-white shadow-3xl rounded-[32px] border border-slate-100 flex items-center gap-5 animate-fade-in-up min-w-[320px]">
-              <div className={`p-3 rounded-full shadow-inner ${toast.type === 'success' ? 'bg-green-50 text-green-500' : toast.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-brand-gold/10 text-brand-gold'}`}>
-                {toast.type === 'success' ? <CheckCircle2 size={24}/> : toast.type === 'error' ? <XCircle size={24}/> : <Loader2 size={24} className="animate-spin"/>}
-              </div>
-              <span className="font-bold text-sm text-brand-graphite leading-tight">{toast.msg}</span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
