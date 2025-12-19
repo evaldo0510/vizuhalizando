@@ -1,8 +1,8 @@
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { AnalysisResult } from "../types";
 
-const analysisSchema: any = {
+const analysisSchema = {
   type: Type.OBJECT,
   properties: {
     quality_check: {
@@ -15,12 +15,12 @@ const analysisSchema: any = {
       required: ["valid", "accuracy_estimate"],
       propertyOrdering: ["valid", "reason", "accuracy_estimate"]
     },
-    genero: { type: Type.STRING, enum: ["Masculino", "Feminino"] },
-    formato_rosto_detalhado: { type: Type.STRING, enum: ['Oval', 'Redondo', 'Quadrado', 'Retangular', 'Triangular', 'Triângulo Invertido', 'Hexagonal', 'Coração'] },
+    genero: { type: Type.STRING },
+    formato_rosto_detalhado: { type: Type.STRING },
     biotipo: { type: Type.STRING },
     analise_facial: { type: Type.STRING },
     analise_pele: { type: Type.STRING },
-    tom_pele_detectado: { type: Type.STRING, enum: ['Quente', 'Frio', 'Neutro', 'Oliva'] },
+    tom_pele_detectado: { type: Type.STRING },
     analise_corporal: { type: Type.STRING },
     paleta_cores: {
       type: Type.ARRAY,
@@ -36,8 +36,16 @@ const analysisSchema: any = {
     visagismo: {
       type: Type.OBJECT,
       properties: {
-        cabelo: { type: Type.OBJECT, properties: { estilo: { type: Type.STRING }, detalhes: { type: Type.STRING }, motivo: { type: Type.STRING } }, propertyOrdering: ["estilo", "detalhes", "motivo"] },
-        barba_ou_make: { type: Type.OBJECT, properties: { estilo: { type: Type.STRING }, detalhes: { type: Type.STRING }, motivo: { type: Type.STRING } }, propertyOrdering: ["estilo", "detalhes", "motivo"] },
+        cabelo: { 
+          type: Type.OBJECT, 
+          properties: { estilo: { type: Type.STRING }, detalhes: { type: Type.STRING }, motivo: { type: Type.STRING } },
+          propertyOrdering: ["estilo", "detalhes", "motivo"]
+        },
+        barba_ou_make: { 
+          type: Type.OBJECT, 
+          properties: { estilo: { type: Type.STRING }, detalhes: { type: Type.STRING }, motivo: { type: Type.STRING } },
+          propertyOrdering: ["estilo", "detalhes", "motivo"]
+        },
         acessorios: { type: Type.ARRAY, items: { type: Type.STRING } }
       },
       propertyOrdering: ["cabelo", "barba_ou_make", "acessorios"]
@@ -75,44 +83,46 @@ export const analyzeImageWithGemini = async (
   userId?: string,
   allowLowQuality: boolean = false
 ): Promise<AnalysisResult> => {
+  // Inicializa com a chave atual do ambiente
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const mainImage = base64Images[0].includes(',') ? base64Images[0].split(',')[1] : base64Images[0];
 
   const qualityInstruction = allowLowQuality 
-    ? "A foto possui baixa qualidade ou ruído. Utilize sua capacidade de extrapolação neural para estimar os traços e proporções com base em silhuetas e volumes perceptíveis. Informe o nível de confiança na resposta."
-    : "A foto deve ser nítida e bem iluminada para um diagnóstico preciso.";
+    ? "A foto possui baixa qualidade. Utilize extrapolação neural para estimar proporções."
+    : "A foto deve ser nítida para diagnóstico preciso.";
 
-  const prompt = `Você é um Master Visagista e Personal Stylist de luxo. 
-  Analise a imagem em anexo considerando: Altura: ${metrics.height}m, Peso: ${metrics.weight}kg.
-  Contexto do cliente: ${environment || 'Profissional e Casual'}.
+  const prompt = `Você é um Master Visagista de luxo. 
+  Analise a imagem considerando: Altura: ${metrics.height}m, Peso: ${metrics.weight}kg.
+  Objetivo: ${environment || 'Elegância e Harmonia'}.
   ${qualityInstruction}
   
-  Técnicas: Identificação de biotipo (Ecto/Meso/Endo), Geometria Facial e Colorimetria.
-  Retorne um diagnóstico completo de consultoria de imagem em JSON.`;
+  Retorne um diagnóstico em JSON seguindo o esquema fornecido.`;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-pro-preview',
-      contents: {
-        parts: [
-          { text: prompt },
-          { inlineData: { mimeType: 'image/jpeg', data: mainImage } }
-        ]
-      },
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: 'image/jpeg', data: mainImage } }
+          ]
+        }
+      ],
       config: {
         responseMimeType: 'application/json',
         responseSchema: analysisSchema,
         temperature: 0.1,
-        thinkingConfig: { thinkingBudget: 4000 }
+        thinkingConfig: { thinkingBudget: 32768 } // Orçamento máximo para análise profunda
       }
     });
 
     const text = response.text;
-    if (!text) throw new Error("A API não retornou dados. Verifique a qualidade da imagem.");
+    if (!text) throw new Error("O Atelier não conseguiu processar esta imagem.");
     return JSON.parse(text.trim()) as AnalysisResult;
   } catch (err: any) {
     console.error("Gemini Analysis Error:", err);
-    throw new Error(err.message || "Erro crítico na comunicação com o Atelier Digital.");
+    throw new Error(err.message || "Erro de conexão com o servidor de IA.");
   }
 };
 
@@ -127,37 +137,40 @@ export const generateVisualEdit = async (
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
   
-  const humanPrompt = `
-    MASTERPIECE QUALITY. LUXURY FASHION PHOTOGRAPHY.
-    MAINTAIN ORIGINAL FACE IDENTITY, SKIN PORES, AND NATURAL FEATURES.
-    OUTFIT CHANGE: Replace current clothing with: ${title}.
-    CLOTHING DETAILS: ${details}.
-    FABRIC TEXTURE: High-end luxury fabrics (silk, wool, fine cotton).
+  const prompt = `
+    LUXURY PHOTOGRAPHY. PHOTO-REALISTIC.
+    TASK: Wear this outfit: ${title}.
+    DETAILS: ${details}.
+    IDENTITY: Preserve face features 100% exactly as original.
     CONTEXT: ${context}.
-    STRICT: NO AI DISTORTION ON FACE. PHOTO-REALISTIC.
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response: GenerateContentResponse = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
-      contents: {
-        parts: [
-          { text: humanPrompt },
-          { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
-        ]
-      },
+      contents: [
+        {
+          parts: [
+            { text: prompt },
+            { inlineData: { mimeType: 'image/jpeg', data: cleanBase64 } }
+          ]
+        }
+      ],
       config: {
         imageConfig: { aspectRatio: "3:4" }
       }
     });
 
-    const part = response.candidates?.[0]?.content?.parts.find(p => p.inlineData);
-    if (part?.inlineData?.data) {
-      return part.inlineData.data;
+    // Procura a parte da imagem na resposta
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData?.data) {
+        return part.inlineData.data;
+      }
     }
-    throw new Error("A IA não conseguiu renderizar este look. Tente uma foto com melhor iluminação.");
+    
+    throw new Error("Não foi possível renderizar o look.");
   } catch (err: any) {
     console.error("Gemini Image Error:", err);
-    throw new Error(err.message || "Erro na escultura neural do look.");
+    throw new Error(err.message || "Erro na geração visual.");
   }
 };

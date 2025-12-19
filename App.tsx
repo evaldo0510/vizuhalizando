@@ -199,7 +199,7 @@ export default function App() {
       const result = await analyzeImageWithGemini(cleanImages, metrics, targetEnvironment, userPreferences, user?.id, allowLowQuality);
       
       if (!result.quality_check?.valid) {
-         setToast({ msg: `IA Nota: ${result.quality_check.reason}`, type: "info" });
+         setToast({ msg: `IA: ${result.quality_check.reason}`, type: "info" });
          setTimeout(() => setToast(null), 6000);
       }
 
@@ -211,8 +211,9 @@ export default function App() {
       
     } catch (err: any) {
       console.error("Erro na análise:", err);
-      setToast({ msg: err.message || "A API do Atelier está temporariamente indisponível.", type: "error" });
+      setToast({ msg: err.message || "O Atelier está temporariamente offline.", type: "error" });
       setTimeout(() => setToast(null), 4000);
+      // Estorna o crédito em caso de erro crítico da API
       await db.addCredits(user.id, 1);
     } finally {
       setIsAnalyzing(false);
@@ -223,16 +224,14 @@ export default function App() {
     if (user) {
       await db.forcePremium(user.id);
       setIsPremium(true);
-      setToast({ msg: "Assinatura Pro Ativada com Sucesso!", type: 'success' });
+      setToast({ msg: "Acesso Pro Ativado!", type: 'success' });
       setTimeout(() => setToast(null), 3000);
     } else {
       setShowAuth(true);
     }
   };
 
-  if (isInitializing) {
-    return null; 
-  }
+  if (isInitializing) return null;
 
   return (
     <div className="min-h-screen bg-brand-bg text-brand-graphite font-sans overflow-x-hidden">
@@ -251,7 +250,7 @@ export default function App() {
                   <span className="text-brand-graphite">Vizu</span>
                   <span className="text-brand-gold">Halizando</span>
                 </h1>
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Digital v5.2 (Pro)</span>
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atelier Pro (Gemini 3)</span>
               </div>
             </div>
             
@@ -450,7 +449,7 @@ export default function App() {
                       </div>
                       <div className="space-y-4">
                         <h3 className="font-serif italic text-4xl text-brand-graphite">Pensando com Gemini 3 Pro...</h3>
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.5em] animate-pulse">Precisão Visagista em Processamento</p>
+                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-[0.5em] animate-pulse">Engenharia Visagista em Processamento</p>
                       </div>
                    </div>
                  )}

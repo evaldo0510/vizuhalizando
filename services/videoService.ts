@@ -1,21 +1,18 @@
 
 import { GoogleGenAI } from "@google/genai";
 
-// Fixed: Removed the global declaration that conflicted with environment-provided types.
-// Used safe type casting to interact with the platform-injected window.aistudio object.
 export const generatePromoVideo = async (prompt: string): Promise<string> => {
-  // Check if API key selection is needed for Veo models
   const aiStudio = typeof window !== 'undefined' ? (window as any).aistudio : undefined;
 
+  // Verifica se o usuário precisa selecionar uma chave paga para o Veo
   if (aiStudio) {
     const hasKey = await aiStudio.hasSelectedApiKey();
     if (!hasKey) {
       await aiStudio.openSelectKey();
-      // Proceed assuming selection was successful as per instructions
     }
   }
 
-  // Always create a new instance right before making an API call to ensure latest API key is used
+  // Sempre cria uma nova instância para garantir que pegue a chave mais recente do process.env
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   try {
@@ -35,21 +32,20 @@ export const generatePromoVideo = async (prompt: string): Promise<string> => {
     }
 
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-    if (!downloadLink) throw new Error("Falha ao obter link do vídeo.");
+    if (!downloadLink) throw new Error("Falha ao gerar o vídeo promocional.");
 
-    // The download link requires the API key for authorization when fetching the MP4 bytes
     return `${downloadLink}&key=${process.env.API_KEY}`;
   } catch (error: any) {
     console.error("Erro na geração de vídeo Veo:", error);
     
-    // Specifically handle the 404 error by prompting for key selection again as per instructions
-    if (error.message?.includes("Requested entity was not found.") || (error.status === 404)) {
+    // Se a entidade não foi encontrada ou erro 404, solicita nova chave
+    if (error.message?.includes("Requested entity was not found.") || error.status === 404) {
       if (aiStudio) {
         await aiStudio.openSelectKey();
       }
-      throw new Error("Por favor, selecione uma chave de API válida com faturamento ativo para usar o Veo.");
+      throw new Error("Seu projeto não possui acesso ao modelo Veo. Verifique o faturamento no Google AI Studio.");
     }
     
-    throw new Error(error.message || "Erro ao gerar vídeo promocional.");
+    throw new Error(error.message || "Ocorreu um erro ao gerar seu vídeo.");
   }
 };
